@@ -1,3 +1,1 @@
-# PortfolioManager
-
-This repository has been reset to an empty state.
+# This branch has been cleared.
