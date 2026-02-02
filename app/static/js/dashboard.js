@@ -13,28 +13,14 @@ if (labels.length > 0) {
           data: values,
           backgroundColor: colors,
           borderWidth: 0,
-          hoverOffset: 10,
         },
       ],
     },
     options: {
-      cutout: "70%",
-      animation: {
-        animateRotate: true,
-        duration: 1200,
-      },
       plugins: {
         legend: {
           labels: { color: "#e5e7eb" },
           position: "bottom",
-        },
-        tooltip: {
-          callbacks: {
-            label: (context) => {
-              const value = context.parsed;
-              return `${context.label}: ¥ ${value.toLocaleString("zh-CN")}`;
-            },
-          },
         },
       },
     },
@@ -51,22 +37,16 @@ if (labels.length > 0) {
           data: values,
           backgroundColor: "#38bdf8",
           borderRadius: 8,
-          maxBarThickness: 40,
         },
       ],
     },
     options: {
       scales: {
-        x: { ticks: { color: "#e5e7eb" }, grid: { color: "rgba(148,163,184,0.1)" } },
-        y: { ticks: { color: "#e5e7eb" }, grid: { color: "rgba(148,163,184,0.1)" } },
+        x: { ticks: { color: "#e5e7eb" } },
+        y: { ticks: { color: "#e5e7eb" } },
       },
       plugins: {
         legend: { labels: { color: "#e5e7eb" } },
-        tooltip: {
-          callbacks: {
-            label: (context) => `¥ ${context.parsed.y.toLocaleString("zh-CN")}`,
-          },
-        },
       },
     },
   });
