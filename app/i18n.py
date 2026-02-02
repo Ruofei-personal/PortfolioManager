@@ -1,0 +1,73 @@
+from __future__ import annotations
+
+from typing import Dict
+
+TRANSLATIONS: Dict[str, Dict[str, str]] = {
+    "zh": {
+        "app_name": "Portfolio Manager",
+        "login": "登录",
+        "register": "注册",
+        "logout": "退出",
+        "username": "用户名",
+        "password": "密码",
+        "login_title": "登录 | Portfolio Manager",
+        "register_title": "注册 | Portfolio Manager",
+        "dashboard_title": "持仓概览 | Portfolio Manager",
+        "no_account": "还没有账号？",
+        "have_account": "已有账号？",
+        "create_account": "创建账号",
+        "total_portfolio_value": "总持仓价值",
+        "total_value_hint": "基于成本价汇总，仅供参考。",
+        "holdings_list": "持仓列表",
+        "add_holding": "新增持仓",
+        "symbol": "代码",
+        "name": "名称",
+        "quantity": "数量",
+        "cost_price": "成本价",
+        "total_cost": "成本总额",
+        "actions": "操作",
+        "edit": "编辑",
+        "delete": "删除",
+        "save": "保存",
+        "update": "更新",
+        "no_holdings": "暂无持仓记录，先新增一条吧。",
+        "holdings_distribution": "持仓价值分布",
+        "switch_language": "English",
+    },
+    "en": {
+        "app_name": "Portfolio Manager",
+        "login": "Sign In",
+        "register": "Sign Up",
+        "logout": "Log Out",
+        "username": "Username",
+        "password": "Password",
+        "login_title": "Sign In | Portfolio Manager",
+        "register_title": "Sign Up | Portfolio Manager",
+        "dashboard_title": "Portfolio Overview | Portfolio Manager",
+        "no_account": "Don't have an account?",
+        "have_account": "Already have an account?",
+        "create_account": "Create Account",
+        "total_portfolio_value": "Total Portfolio Value",
+        "total_value_hint": "Based on cost basis, for reference only.",
+        "holdings_list": "Holdings",
+        "add_holding": "Add Holding",
+        "symbol": "Symbol",
+        "name": "Name",
+        "quantity": "Quantity",
+        "cost_price": "Cost Price",
+        "total_cost": "Total Cost",
+        "actions": "Actions",
+        "edit": "Edit",
+        "delete": "Delete",
+        "save": "Save",
+        "update": "Update",
+        "no_holdings": "No holdings yet. Add your first position.",
+        "holdings_distribution": "Holdings Distribution",
+        "switch_language": "中文",
+    },
+}
+
+
+def translate(lang: str, key: str) -> str:
+    language = lang if lang in TRANSLATIONS else "zh"
+    return TRANSLATIONS.get(language, {}).get(key, key)

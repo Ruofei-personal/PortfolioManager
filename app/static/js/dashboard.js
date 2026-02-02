@@ -33,7 +33,7 @@ if (labels.length > 0) {
       labels,
       datasets: [
         {
-          label: "成本总额",
+          label: chartLabel,
           data: values,
           backgroundColor: "#38bdf8",
           borderRadius: 8,
