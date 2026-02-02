@@ -1,0 +1,88 @@
+body {
+  min-height: 100vh;
+  font-family: "Inter", system-ui, sans-serif;
+  background: radial-gradient(circle at top, #1f2937, #030712 45%, #000 75%);
+  color: #f8fafc;
+}
+
+.hero-glow {
+  position: relative;
+}
+
+.hero-glow::before {
+  content: "";
+  position: absolute;
+  inset: -2rem;
+  background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.25), transparent 60%);
+  filter: blur(20px);
+  z-index: 0;
+}
+
+.glass-panel,
+.glass-card {
+  position: relative;
+  z-index: 1;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 1.2rem;
+  backdrop-filter: blur(18px);
+}
+
+.card {
+  border-radius: 1.2rem;
+}
+
+.stat-card {
+  padding: 1.25rem 1.5rem;
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.15);
+}
+
+.btn-neon {
+  background: linear-gradient(120deg, #38bdf8, #818cf8);
+  border: none;
+  color: #0f172a;
+  font-weight: 600;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+}
+
+.btn-neon:hover {
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+.form-control-dark {
+  background-color: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #f8fafc;
+}
+
+.form-control-dark:focus {
+  background-color: rgba(15, 23, 42, 0.85);
+  color: #f8fafc;
+  border-color: rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.15);
+}
+
+.table-dark {
+  --bs-table-bg: #0b0f16;
+  --bs-table-striped-bg: #111827;
+  --bs-table-striped-color: #e5e7eb;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.progress-glow {
+  height: 0.5rem;
+  background-color: rgba(30, 41, 59, 0.6);
+}
+
+.progress-glow .progress-bar {
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+}
+
+.btn-outline-light:hover {
+  color: #000;
+}
