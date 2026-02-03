@@ -35,6 +35,11 @@ createApp({
           statAssets: "资产数",
           statTotalCost: "总投入",
           statAverageCost: "平均成本",
+          actionsTitle: "组合操作",
+          actionsSubtitle: "从你的持仓开始管理。",
+          actionsHint: "添加持仓后，会在下方列表展示并自动统计。",
+          addHolding: "添加持仓",
+          refreshHoldings: "刷新持仓",
           mosaicTitle: "资产热力拼图",
           mosaicSubtitle: "按占比大小与盈亏颜色生成的迷你热区。",
           mosaicEmpty: "暂无可视化数据，添加持仓后自动生成。",
@@ -49,6 +54,7 @@ createApp({
           saveAsset: "保存持仓",
           updateAsset: "更新持仓",
           cancelEdit: "取消编辑",
+          closeModal: "关闭",
           tableTitle: "持仓明细",
           tableSubtitle: "登录后只展示你的持仓。",
           tableAriaHoldings: "持仓列表",
@@ -215,6 +221,11 @@ createApp({
           statAssets: "Assets",
           statTotalCost: "Total invested",
           statAverageCost: "Average cost",
+          actionsTitle: "Portfolio actions",
+          actionsSubtitle: "Keep your holdings up to date.",
+          actionsHint: "Add a holding to see it in the list and summary.",
+          addHolding: "Add holding",
+          refreshHoldings: "Refresh holdings",
           mosaicTitle: "Allocation mosaic",
           mosaicSubtitle: "Tiles sized by weight and tinted by performance.",
           mosaicEmpty: "No data yet. Add holdings to generate the mosaic.",
@@ -229,6 +240,7 @@ createApp({
           saveAsset: "Save holding",
           updateAsset: "Update holding",
           cancelEdit: "Cancel edit",
+          closeModal: "Close",
           tableTitle: "Holdings",
           tableSubtitle: "Show only your holdings after login.",
           tableAriaHoldings: "Holdings table",
@@ -400,6 +412,7 @@ createApp({
       token: localStorage.getItem("pm_token") || "",
       userEmail: localStorage.getItem("pm_email") || "",
       editingId: null,
+      isAssetModalOpen: false,
       notice: {
         message: "",
         type: "info",
@@ -611,6 +624,7 @@ createApp({
           this.portfolio.unshift(saved);
         }
         this.resetAssetForm();
+        this.closeAssetModal();
         this.setNotice(this.t(wasEditing ? "assetUpdated" : "assetSaved"), "success");
       } catch (error) {
         this.setNotice(error.message || this.t("saveFailed"), "error");
@@ -659,9 +673,31 @@ createApp({
         quantity: "",
         cost: "",
       };
+      this.isAssetModalOpen = true;
     },
     cancelEdit() {
       this.resetAssetForm();
+      this.closeAssetModal();
+    },
+    openAssetModal() {
+      if (!this.isEditing) {
+        this.resetAssetForm();
+      }
+      this.isAssetModalOpen = true;
+    },
+    closeAssetModal() {
+      this.isAssetModalOpen = false;
+      if (this.isEditing || this.assetForm.name) {
+        this.resetAssetForm();
+      }
+    },
+    async refreshPortfolio() {
+      if (!this.token) return;
+      try {
+        await this.loadPortfolio();
+      } catch (error) {
+        this.setNotice(error.message || this.t("requestFailed"), "error");
+      }
     },
     async deleteAsset(id) {
       if (this.isLoading.deletingId) return;
