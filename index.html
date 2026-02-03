@@ -235,6 +235,74 @@
             </div>
           </div>
 
+          <div class="panel insights-panel">
+            <div class="panel-header">
+              <h2>{{ t("insightsTitle") }}</h2>
+              <p>{{ t("insightsSubtitle") }}</p>
+            </div>
+            <div class="insights-grid">
+              <div class="insight-card">
+                <h3>{{ t("healthTitle") }}</h3>
+                <ul class="health-list">
+                  <li v-for="check in healthChecks" :key="check.label" :class="['health-item', check.status]">
+                    <div>
+                      <span class="health-label">{{ check.label }}</span>
+                      <span class="health-value">{{ check.value }}</span>
+                    </div>
+                    <p class="health-detail">{{ check.detail }}</p>
+                  </li>
+                </ul>
+              </div>
+              <div class="insight-card">
+                <h3>{{ t("targetTitle") }}</h3>
+                <p class="muted">{{ t("targetSubtitle") }}</p>
+                <div class="target-table">
+                  <div class="target-row" v-for="row in allocationBreakdown" :key="row.key">
+                    <div class="target-info">
+                      <strong>{{ row.label }}</strong>
+                      <span class="muted">{{ t("currentLabel") }} {{ row.percent }}%</span>
+                    </div>
+                    <div class="target-input">
+                      <input v-model.number="allocationTargets[row.key]" type="number" min="0" max="100" />
+                      <span class="muted">%</span>
+                    </div>
+                    <div class="target-delta" :class="row.deltaStatus">
+                      {{ row.deltaLabel }}
+                    </div>
+                  </div>
+                </div>
+                <div class="target-footer" :class="{ warning: targetTotal !== 100 }">
+                  {{ t("targetTotal", { total: targetTotal }) }}
+                </div>
+              </div>
+              <div class="insight-card">
+                <h3>{{ t("presetTitle") }}</h3>
+                <div class="preset-controls">
+                  <input v-model.trim="newPresetName" type="text" :placeholder="t('presetPlaceholder')" />
+                  <button class="secondary-btn" type="button" @click="savePreset" :disabled="!canSavePreset">
+                    {{ t("presetSave") }}
+                  </button>
+                </div>
+                <div class="preset-list" v-if="presets.length">
+                  <div class="preset-chip" v-for="preset in presets" :key="preset.id">
+                    <button class="ghost-btn" type="button" @click="applyPreset(preset)">
+                      {{ preset.name }}
+                    </button>
+                    <button class="icon-btn" type="button" @click="removePreset(preset.id)">
+                      ✕
+                    </button>
+                  </div>
+                </div>
+                <p class="muted" v-else>{{ t("presetEmpty") }}</p>
+                <h3 class="achievement-title">{{ t("achievementTitle") }}</h3>
+                <div class="badge-list">
+                  <span class="badge" v-for="badge in achievements" :key="badge">{{ badge }}</span>
+                  <span class="muted" v-if="!achievements.length">{{ t("achievementEmpty") }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="panel table-panel" aria-live="polite">
             <div class="panel-header">
               <h2>{{ t("tableTitle") }}</h2>
