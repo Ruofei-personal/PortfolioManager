@@ -3,6 +3,107 @@ const { createApp, computed, watch } = Vue;
 createApp({
   data() {
     return {
+      locale: localStorage.getItem("pm_locale") || (navigator.language.startsWith("zh") ? "zh-CN" : "en-US"),
+      translations: {
+        "zh-CN": {
+          brandTitle: "Portfolio Manager",
+          brandSubtitle: "你的持仓，轻松掌控",
+          logout: "退出登录",
+          welcomeBack: "欢迎回来",
+          welcomeSubtitle: "登录后管理你的投资组合。",
+          email: "邮箱",
+          emailPlaceholder: "you@email.com",
+          password: "密码",
+          passwordPlaceholder: "••••••••",
+          passwordMinPlaceholder: "至少 6 位",
+          login: "登录",
+          or: "或",
+          createAccount: "创建账号",
+          dataHint: "数据将保存在服务器 SQLite（示例）。",
+          visualTitle: "酷炫数据可视化",
+          visualSubtitle: "使用饼图快速洞察资产占比，了解平均成本、数量与总投入。",
+          visualFeatureOne: "实时更新持仓",
+          visualFeatureTwo: "自动计算平均成本",
+          visualFeatureThree: "多资产占比展示",
+          overviewTitle: "资产概览",
+          greeting: "Hi, {email}",
+          statAssets: "资产数",
+          statTotalCost: "总投入",
+          statAverageCost: "平均成本",
+          formTitle: "新增/加仓",
+          formSubtitle: "记录你的每一笔买入。",
+          assetName: "资产名称",
+          assetNamePlaceholder: "Apple / AAPL",
+          category: "分类",
+          quantity: "数量",
+          totalCost: "买入总价 (¥)",
+          saveAsset: "保存持仓",
+          tableTitle: "持仓明细",
+          tableSubtitle: "点击删除移除资产。",
+          avgCostLabel: "平均成本 {value}",
+          costPerShare: "成本/股",
+          delete: "删除",
+          emptyState: "暂无资产，先添加一笔持仓吧。",
+          categoryStock: "股票",
+          categoryCrypto: "虚拟币",
+          loginFailed: "登录失败",
+          registerSuccess: "注册成功，请登录",
+          registerFailed: "注册失败",
+          invalidAsset: "请输入有效的资产信息",
+          saveFailed: "保存失败",
+          deleteFailed: "删除失败",
+          requestFailed: "请求失败",
+        },
+        "en-US": {
+          brandTitle: "Portfolio Manager",
+          brandSubtitle: "Track your holdings with ease",
+          logout: "Sign out",
+          welcomeBack: "Welcome back",
+          welcomeSubtitle: "Log in to manage your portfolio.",
+          email: "Email",
+          emailPlaceholder: "you@email.com",
+          password: "Password",
+          passwordPlaceholder: "••••••••",
+          passwordMinPlaceholder: "At least 6 characters",
+          login: "Sign in",
+          or: "or",
+          createAccount: "Create account",
+          dataHint: "Data is stored on the server SQLite (demo).",
+          visualTitle: "Beautiful data visualization",
+          visualSubtitle: "Use the donut chart to see allocation, average cost, quantity, and total invested.",
+          visualFeatureOne: "Real-time holdings updates",
+          visualFeatureTwo: "Automatic average cost",
+          visualFeatureThree: "Multi-asset allocation view",
+          overviewTitle: "Portfolio overview",
+          greeting: "Hi, {email}",
+          statAssets: "Assets",
+          statTotalCost: "Total invested",
+          statAverageCost: "Average cost",
+          formTitle: "Add / buy more",
+          formSubtitle: "Log every buy in one place.",
+          assetName: "Asset name",
+          assetNamePlaceholder: "Apple / AAPL",
+          category: "Category",
+          quantity: "Quantity",
+          totalCost: "Total cost (¥)",
+          saveAsset: "Save holding",
+          tableTitle: "Holdings",
+          tableSubtitle: "Click delete to remove assets.",
+          avgCostLabel: "Avg cost {value}",
+          costPerShare: "Cost/share",
+          delete: "Delete",
+          emptyState: "No assets yet. Add your first holding.",
+          categoryStock: "Stocks",
+          categoryCrypto: "Crypto",
+          loginFailed: "Login failed",
+          registerSuccess: "Registration successful. Please sign in.",
+          registerFailed: "Registration failed",
+          invalidAsset: "Please enter valid asset information",
+          saveFailed: "Save failed",
+          deleteFailed: "Delete failed",
+          requestFailed: "Request failed",
+        },
+      },
       loginForm: {
         email: "",
         password: "",
@@ -13,11 +114,14 @@ createApp({
       },
       assetForm: {
         name: "",
-        category: "股票",
+        category: "stock",
         quantity: 1,
         cost: 0,
       },
-      categories: ["股票", "虚拟币"],
+      categories: [
+        { value: "stock", labelKey: "categoryStock" },
+        { value: "crypto", labelKey: "categoryCrypto" },
+      ],
       portfolio: [],
       token: localStorage.getItem("pm_token") || "",
       userEmail: localStorage.getItem("pm_email") || "",
@@ -27,6 +131,9 @@ createApp({
   computed: {
     isAuthed() {
       return Boolean(this.token);
+    },
+    localeLabel() {
+      return this.locale.startsWith("zh") ? "English" : "中文";
     },
     stats() {
       const total = this.portfolio.reduce((sum, item) => sum + item.totalCost, 0);
@@ -39,8 +146,34 @@ createApp({
     },
   },
   methods: {
+    t(key, params = {}) {
+      const dictionary = this.translations[this.locale] || this.translations["en-US"];
+      const text = dictionary[key] || key;
+      return Object.entries(params).reduce(
+        (result, [paramKey, value]) => result.replaceAll(`{${paramKey}}`, value),
+        text
+      );
+    },
+    toggleLocale() {
+      this.locale = this.locale.startsWith("zh") ? "en-US" : "zh-CN";
+      localStorage.setItem("pm_locale", this.locale);
+      this.updateDocumentLang();
+    },
+    updateDocumentLang() {
+      document.documentElement.setAttribute("lang", this.locale);
+    },
+    categoryLabel(value) {
+      if (value === "stock" || value === "股票") return this.t("categoryStock");
+      if (value === "crypto" || value === "虚拟币") return this.t("categoryCrypto");
+      return value;
+    },
     currency(value) {
-      return `¥${Number(value).toFixed(2)}`;
+      const formatter = new Intl.NumberFormat(this.locale, {
+        style: "currency",
+        currency: "CNY",
+        maximumFractionDigits: 2,
+      });
+      return formatter.format(Number(value) || 0);
     },
     async apiFetch(url, options = {}) {
       const headers = {
@@ -50,8 +183,8 @@ createApp({
       if (this.token) headers.Authorization = `Bearer ${this.token}`;
       const response = await fetch(url, { ...options, headers });
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: "请求失败" }));
-        throw new Error(error.detail || error.message || "请求失败");
+        const error = await response.json().catch(() => ({ detail: this.t("requestFailed") }));
+        throw new Error(error.detail || error.message || this.t("requestFailed"));
       }
       return response.json();
     },
@@ -72,7 +205,7 @@ createApp({
         this.loginForm.password = "";
         await this.loadPortfolio();
       } catch (error) {
-        alert(error.message || "登录失败");
+        alert(error.message || this.t("loginFailed"));
       }
     },
     async register() {
@@ -86,9 +219,9 @@ createApp({
         });
         this.registerForm.email = "";
         this.registerForm.password = "";
-        alert("注册成功，请登录");
+        alert(this.t("registerSuccess"));
       } catch (error) {
-        alert(error.message || "注册失败");
+        alert(error.message || this.t("registerFailed"));
       }
     },
     async loadPortfolio() {
@@ -97,7 +230,7 @@ createApp({
     },
     async saveAsset() {
       if (!this.assetForm.name || this.assetForm.quantity <= 0 || this.assetForm.cost < 0) {
-        alert("请输入有效的资产信息");
+        alert(this.t("invalidAsset"));
         return;
       }
       try {
@@ -111,12 +244,12 @@ createApp({
           }),
         });
         this.assetForm.name = "";
-        this.assetForm.category = "股票";
+        this.assetForm.category = "stock";
         this.assetForm.quantity = 1;
         this.assetForm.cost = 0;
         await this.loadPortfolio();
       } catch (error) {
-        alert(error.message || "保存失败");
+        alert(error.message || this.t("saveFailed"));
       }
     },
     async deleteAsset(id) {
@@ -124,7 +257,7 @@ createApp({
         await this.apiFetch(`/api/portfolio/${id}`, { method: "DELETE" });
         await this.loadPortfolio();
       } catch (error) {
-        alert(error.message || "删除失败");
+        alert(error.message || this.t("deleteFailed"));
       }
     },
     logout() {
@@ -190,6 +323,7 @@ createApp({
     },
   },
   mounted() {
+    this.updateDocumentLang();
     this.init();
     watch(
       () => this.portfolio,
