@@ -5,10 +5,8 @@ Full-stack demo for tracking a personal portfolio with login, holdings managemen
 ## Run locally
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 3000
+uv sync
+uv run -- uvicorn app.main:app --reload --port 3000
 ```
 
 Then open [http://localhost:3000](http://localhost:3000).
@@ -38,13 +36,12 @@ sudo -u portfolio git clone <your-repo-url> /opt/portfolio-manager
 cd /opt/portfolio-manager
 ```
 
-### 3. Create a virtual environment and install dependencies
+### 3. Install dependencies with uv
 
 ```bash
-sudo -u portfolio python -m venv /opt/portfolio-manager/.venv
-sudo -u portfolio /opt/portfolio-manager/.venv/bin/pip install --upgrade pip
-sudo -u portfolio /opt/portfolio-manager/.venv/bin/pip install -r /opt/portfolio-manager/requirements.txt
-sudo -u portfolio /opt/portfolio-manager/.venv/bin/pip install gunicorn
+sudo -u portfolio uv venv /opt/portfolio-manager/.venv
+sudo -u portfolio /opt/portfolio-manager/.venv/bin/uv sync
+sudo -u portfolio /opt/portfolio-manager/.venv/bin/uv pip install gunicorn
 ```
 
 ### 4. Start with gunicorn (recommended)
@@ -52,7 +49,7 @@ sudo -u portfolio /opt/portfolio-manager/.venv/bin/pip install gunicorn
 Run the app on an internal port (e.g., `8000`) and let `nginx` handle public traffic.
 
 ```bash
-sudo -u portfolio /opt/portfolio-manager/.venv/bin/gunicorn \
+sudo -u portfolio /opt/portfolio-manager/.venv/bin/uv run -- gunicorn \
   -k uvicorn.workers.UvicornWorker \
   -w 2 \
   -b 127.0.0.1:8000 \
@@ -74,7 +71,7 @@ User=portfolio
 Group=portfolio
 WorkingDirectory=/opt/portfolio-manager
 Environment="PYTHONUNBUFFERED=1"
-ExecStart=/opt/portfolio-manager/.venv/bin/gunicorn \
+ExecStart=/opt/portfolio-manager/.venv/bin/uv run -- gunicorn \
   -k uvicorn.workers.UvicornWorker \
   -w 2 \
   -b 127.0.0.1:8000 \
