@@ -7,6 +7,7 @@ from app.models import Holding, User
 from app.schemas import HoldingResponse, PortfolioPayload
 
 router = APIRouter()
+ALLOWED_CATEGORIES = {"股票", "虚拟币"}
 
 
 @router.get("/api/portfolio", response_model=list[HoldingResponse])
@@ -20,6 +21,7 @@ def list_portfolio(user: User = Depends(require_user), db=Depends(get_db)):
         HoldingResponse(
             id=holding.id,
             name=holding.name,
+            category=holding.category,
             quantity=holding.quantity,
             totalCost=holding.total_cost,
         )
@@ -31,6 +33,9 @@ def list_portfolio(user: User = Depends(require_user), db=Depends(get_db)):
 def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user), db=Depends(get_db)):
     if payload.quantity <= 0 or payload.cost < 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid portfolio data.")
+    category = payload.category.strip()
+    if category not in ALLOWED_CATEGORIES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category.")
 
     holding = db.execute(
         select(Holding).where(Holding.user_id == user.id, Holding.name == payload.name.strip())
@@ -40,11 +45,13 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
     if holding:
         holding.quantity += payload.quantity
         holding.total_cost += payload.cost
+        holding.category = category
         holding.updated_at = now
         db.commit()
         return HoldingResponse(
             id=holding.id,
             name=holding.name,
+            category=holding.category,
             quantity=holding.quantity,
             totalCost=holding.total_cost,
         )
@@ -52,6 +59,7 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
     holding = Holding(
         user_id=user.id,
         name=payload.name.strip(),
+        category=category,
         quantity=payload.quantity,
         total_cost=payload.cost,
         created_at=now,
@@ -63,6 +71,7 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
     return HoldingResponse(
         id=holding.id,
         name=holding.name,
+        category=holding.category,
         quantity=holding.quantity,
         totalCost=holding.total_cost,
     )
