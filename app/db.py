@@ -27,6 +27,30 @@ def ensure_holdings_note():
             conn.execute(text("ALTER TABLE holdings ADD COLUMN note VARCHAR"))
 
 
+def ensure_holdings_currency():
+    with engine.begin() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(holdings)")).fetchall()}
+        if "currency" not in columns:
+            conn.execute(
+                text("ALTER TABLE holdings ADD COLUMN currency VARCHAR NOT NULL DEFAULT 'CNY'")
+            )
+            conn.execute(text("UPDATE holdings SET currency = 'CNY' WHERE currency IS NULL"))
+
+
+def ensure_holdings_current_price():
+    with engine.begin() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(holdings)")).fetchall()}
+        if "current_price" not in columns:
+            conn.execute(text("ALTER TABLE holdings ADD COLUMN current_price FLOAT"))
+
+
+def ensure_holdings_tags():
+    with engine.begin() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(holdings)")).fetchall()}
+        if "tags" not in columns:
+            conn.execute(text("ALTER TABLE holdings ADD COLUMN tags VARCHAR"))
+
+
 def get_db():
     db = SessionLocal()
     try:

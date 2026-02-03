@@ -11,7 +11,7 @@ const loadStoredFilters = () => {
     const stored = JSON.parse(localStorage.getItem("pm_filters") || "null");
     if (!stored || typeof stored !== "object") return { ...defaultFilters };
     const next = { ...defaultFilters, ...stored };
-    if (!["all", "stock", "crypto", "etf"].includes(next.category)) {
+    if (!["all", "stock", "crypto", "etf", "cash"].includes(next.category)) {
       next.category = defaultFilters.category;
     }
     if (!["recent", "name", "totalCost", "quantity"].includes(next.sort)) {
@@ -55,7 +55,9 @@ createApp({
           greeting: "Hi, {email}",
           statAssets: "资产数",
           statTotalCost: "总投入",
+          statMarketValue: "市值",
           statAverageCost: "平均成本",
+          statUnrealized: "浮动盈亏",
           formTitle: "新增/加仓",
           formSubtitle: "记录你的每一笔买入。",
           assetName: "资产名称",
@@ -63,6 +65,10 @@ createApp({
           category: "分类",
           quantity: "数量",
           totalCost: "买入总价 ({currency})",
+          currentPrice: "现价 ({currency})",
+          currency: "币种",
+          tags: "标签",
+          tagsPlaceholder: "例如：长期,核心仓位",
           saveAsset: "保存持仓",
           updateAsset: "更新持仓",
           cancelEdit: "取消编辑",
@@ -82,13 +88,28 @@ createApp({
           costPerShare: "成本/股",
           assetNote: "备注",
           assetNotePlaceholder: "比如：长期持有/短线策略",
+          chartMetric: "图表依据",
+          chartMetricCost: "成本占比",
+          chartMetricMarket: "市值占比",
           edit: "编辑",
           delete: "删除",
+          buy: "买入",
+          update: "更新",
+          deleteAction: "删除",
+          transactionsTitle: "交易记录",
+          transactionsSubtitle: "最近 50 条持仓变动。",
+          transactionsEmpty: "暂无交易记录。",
+          transactionAction: "动作：{action}",
           emptyState: "暂无资产，先添加一笔持仓吧。",
           emptyStateFiltered: "没有匹配的资产，请调整筛选条件。",
           categoryStock: "股票",
           categoryCrypto: "虚拟币",
           categoryEtf: "ETF",
+          categoryCash: "现金",
+          quickSortTotal: "最高投入",
+          quickSortQuantity: "最大数量",
+          importCsv: "导入 CSV",
+          exportCsv: "导出 CSV",
           loginFailed: "登录失败",
           loginSuccess: "登录成功",
           registerSuccess: "注册成功，请登录",
@@ -107,6 +128,7 @@ createApp({
           assetNameError: "请输入资产名称",
           quantityError: "数量需大于 0",
           costError: "买入总价需大于或等于 0",
+          currentPriceError: "现价需大于或等于 0",
         },
         "en-US": {
           brandTitle: "Portfolio Manager",
@@ -132,7 +154,9 @@ createApp({
           greeting: "Hi, {email}",
           statAssets: "Assets",
           statTotalCost: "Total invested",
+          statMarketValue: "Market value",
           statAverageCost: "Average cost",
+          statUnrealized: "Unrealized P/L",
           formTitle: "Add / buy more",
           formSubtitle: "Log every buy in one place.",
           assetName: "Asset name",
@@ -140,6 +164,10 @@ createApp({
           category: "Category",
           quantity: "Quantity",
           totalCost: "Total cost ({currency})",
+          currentPrice: "Current price ({currency})",
+          currency: "Currency",
+          tags: "Tags",
+          tagsPlaceholder: "Example: core, long-term",
           saveAsset: "Save holding",
           updateAsset: "Update holding",
           cancelEdit: "Cancel edit",
@@ -159,13 +187,28 @@ createApp({
           costPerShare: "Cost/share",
           assetNote: "Notes",
           assetNotePlaceholder: "Example: long-term / swing trade",
+          chartMetric: "Chart metric",
+          chartMetricCost: "Cost allocation",
+          chartMetricMarket: "Market value allocation",
           edit: "Edit",
           delete: "Delete",
+          buy: "Buy",
+          update: "Update",
+          deleteAction: "Delete",
+          transactionsTitle: "Transaction history",
+          transactionsSubtitle: "Most recent 50 holding changes.",
+          transactionsEmpty: "No transactions yet.",
+          transactionAction: "Action: {action}",
           emptyState: "No assets yet. Add your first holding.",
           emptyStateFiltered: "No matching holdings. Update your filters to see results.",
           categoryStock: "Stocks",
           categoryCrypto: "Crypto",
           categoryEtf: "ETF",
+          categoryCash: "Cash",
+          quickSortTotal: "Top invested",
+          quickSortQuantity: "Largest quantity",
+          importCsv: "Import CSV",
+          exportCsv: "Export CSV",
           loginFailed: "Login failed",
           loginSuccess: "Signed in successfully",
           registerSuccess: "Registration successful. Please sign in.",
@@ -184,6 +227,7 @@ createApp({
           assetNameError: "Please enter an asset name",
           quantityError: "Quantity must be greater than 0",
           costError: "Total cost must be at least 0",
+          currentPriceError: "Current price must be at least 0",
         },
       },
       loginForm: {
@@ -199,23 +243,31 @@ createApp({
         category: "stock",
         quantity: 1,
         cost: 0,
+        currentPrice: null,
+        currency: "CNY",
         note: "",
+        tags: "",
       },
       assetErrors: {
         name: "",
         quantity: "",
         cost: "",
+        currentPrice: "",
       },
       categories: [
         { value: "stock", labelKey: "categoryStock" },
         { value: "crypto", labelKey: "categoryCrypto" },
         { value: "etf", labelKey: "categoryEtf" },
+        { value: "cash", labelKey: "categoryCash" },
       ],
+      currencies: ["CNY", "USD", "HKD", "EUR"],
       filters: loadStoredFilters(),
       portfolio: [],
+      transactions: [],
       token: localStorage.getItem("pm_token") || "",
       userEmail: localStorage.getItem("pm_email") || "",
       chart: null,
+      chartMetric: "cost",
       editingId: null,
       notice: {
         message: "",
@@ -255,10 +307,18 @@ createApp({
     stats() {
       const total = this.visiblePortfolio.reduce((sum, item) => sum + item.totalCost, 0);
       const totalQty = this.visiblePortfolio.reduce((sum, item) => sum + item.quantity, 0);
+      const totalMarketValue = this.visiblePortfolio.reduce(
+        (sum, item) => sum + this.marketValue(item),
+        0
+      );
+      const totalGain = totalMarketValue - total;
       return {
         assetCount: this.visiblePortfolio.length,
         totalCost: this.currency(total || 0),
+        marketValue: this.currency(totalMarketValue || 0),
         averageCost: this.currency(totalQty ? total / totalQty : 0),
+        unrealizedGain: this.currency(totalGain || 0),
+        unrealizedClass: totalGain >= 0 ? "positive" : "negative",
       };
     },
     visiblePortfolio() {
@@ -310,21 +370,46 @@ createApp({
       if (value === "stock" || value === "股票") return this.t("categoryStock");
       if (value === "crypto" || value === "虚拟币") return this.t("categoryCrypto");
       if (value === "etf" || value === "ETF") return this.t("categoryEtf");
+      if (value === "cash" || value === "现金") return this.t("categoryCash");
       return value;
     },
     normalizedCategory(value) {
       if (value === "stock" || value === "股票") return "stock";
       if (value === "crypto" || value === "虚拟币") return "crypto";
       if (value === "etf" || value === "ETF") return "etf";
+      if (value === "cash" || value === "现金") return "cash";
       return value;
     },
-    currency(value) {
+    currency(value, currencyOverride = null) {
+      const currencyCode = currencyOverride || this.currencyCode;
       const formatter = new Intl.NumberFormat(this.locale, {
         style: "currency",
-        currency: this.currencyCode,
+        currency: currencyCode,
         maximumFractionDigits: 2,
       });
       return formatter.format(Number(value) || 0);
+    },
+    marketValue(asset) {
+      if (asset.currentPrice !== null && asset.currentPrice !== undefined) {
+        return Number(asset.currentPrice) * Number(asset.quantity || 0);
+      }
+      return Number(asset.totalCost) || 0;
+    },
+    unrealizedGain(asset) {
+      return this.marketValue(asset) - (Number(asset.totalCost) || 0);
+    },
+    gainClass(asset) {
+      return this.unrealizedGain(asset) >= 0 ? "positive" : "negative";
+    },
+    splitTags(value) {
+      return value
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+    },
+    formatDate(value) {
+      if (!value) return "";
+      return new Date(value).toLocaleString(this.locale);
     },
     clearAssetError(field) {
       if (this.assetErrors[field]) {
@@ -362,6 +447,7 @@ createApp({
         this.loginForm.email = "";
         this.loginForm.password = "";
         await this.loadPortfolio();
+        await this.loadTransactions();
         this.setNotice(this.t("loginSuccess"), "success");
       } catch (error) {
         this.setNotice(error.message || this.t("loginFailed"), "error");
@@ -393,11 +479,106 @@ createApp({
       if (!this.token) return;
       this.portfolio = await this.apiFetch("/api/portfolio");
     },
+    async loadTransactions() {
+      if (!this.token) return;
+      this.transactions = await this.apiFetch("/api/transactions");
+    },
+    applyQuickSort(sort) {
+      this.filters.sort = sort;
+    },
+    exportCsv() {
+      const headers = [
+        "name",
+        "category",
+        "quantity",
+        "totalCost",
+        "currentPrice",
+        "currency",
+        "note",
+        "tags",
+      ];
+      const rows = this.portfolio.map((asset) =>
+        headers
+          .map((key) => {
+            const value = asset[key] ?? "";
+            const text = String(value).replaceAll('"', '""');
+            return `"${text}"`;
+          })
+          .join(",")
+      );
+      const csv = [headers.join(","), ...rows].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "portfolio.csv";
+      link.click();
+      URL.revokeObjectURL(link.href);
+    },
+    parseCsvRow(row) {
+      const result = [];
+      let current = "";
+      let inQuotes = false;
+      for (let i = 0; i < row.length; i += 1) {
+        const char = row[i];
+        if (char === '"' && row[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === "," && !inQuotes) {
+          result.push(current);
+          current = "";
+        } else {
+          current += char;
+        }
+      }
+      result.push(current);
+      return result.map((value) => value.trim());
+    },
+    async importCsv(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const lines = text.split(/\r?\n/).filter(Boolean);
+        if (lines.length < 2) return;
+        const headers = this.parseCsvRow(lines[0]).map((header) => header.toLowerCase());
+        const tasks = lines.slice(1).map((line) => {
+          const values = this.parseCsvRow(line);
+          const row = headers.reduce((acc, header, index) => {
+            acc[header] = values[index] ?? "";
+            return acc;
+          }, {});
+          return this.apiFetch("/api/portfolio", {
+            method: "POST",
+            body: JSON.stringify({
+              name: row.name || "",
+              category: row.category || "stock",
+              quantity: Number(row.quantity || 0),
+              cost: Number(row.totalcost || 0),
+              currentPrice: row.currentprice ? Number(row.currentprice) : null,
+              currency: row.currency || "CNY",
+              note: row.note || null,
+              tags: row.tags || null,
+            }),
+          });
+        });
+        await Promise.all(tasks);
+        await this.loadPortfolio();
+        await this.loadTransactions();
+        this.setNotice(this.t("assetSaved"), "success");
+      } catch (error) {
+        this.setNotice(error.message || this.t("saveFailed"), "error");
+      } finally {
+        event.target.value = "";
+      }
+    },
     async saveAsset() {
       const errors = {
         name: "",
         quantity: "",
         cost: "",
+        currentPrice: "",
       };
       if (!this.assetForm.name.trim()) {
         errors.name = this.t("assetNameError");
@@ -408,8 +589,11 @@ createApp({
       if (this.assetForm.cost < 0) {
         errors.cost = this.t("costError");
       }
+      if (this.assetForm.currentPrice !== null && this.assetForm.currentPrice < 0) {
+        errors.currentPrice = this.t("currentPriceError");
+      }
       this.assetErrors = errors;
-      if (errors.name || errors.quantity || errors.cost) {
+      if (errors.name || errors.quantity || errors.cost || errors.currentPrice) {
         this.setNotice(this.t("invalidAsset"), "error");
         return;
       }
@@ -422,7 +606,13 @@ createApp({
           category: this.assetForm.category,
           quantity: Number(this.assetForm.quantity),
           cost: Number(this.assetForm.cost),
+          currentPrice:
+            this.assetForm.currentPrice === null || this.assetForm.currentPrice === ""
+              ? null
+              : Number(this.assetForm.currentPrice),
+          currency: this.assetForm.currency,
           note: this.assetForm.note.trim() || null,
+          tags: this.assetForm.tags.trim() || null,
         };
         const saved = await this.apiFetch(
           this.isEditing ? `/api/portfolio/${this.editingId}` : "/api/portfolio",
@@ -438,6 +628,7 @@ createApp({
           this.portfolio.unshift(saved);
         }
         this.resetAssetForm();
+        await this.loadTransactions();
         this.setNotice(this.t(wasEditing ? "assetUpdated" : "assetSaved"), "success");
       } catch (error) {
         this.setNotice(error.message || this.t("saveFailed"), "error");
@@ -451,12 +642,16 @@ createApp({
         category: "stock",
         quantity: 1,
         cost: 0,
+        currentPrice: null,
+        currency: "CNY",
         note: "",
+        tags: "",
       };
       this.assetErrors = {
         name: "",
         quantity: "",
         cost: "",
+        currentPrice: "",
       };
       this.editingId = null;
     },
@@ -467,12 +662,16 @@ createApp({
         category: this.normalizedCategory(asset.category),
         quantity: asset.quantity,
         cost: asset.totalCost,
+        currentPrice: asset.currentPrice ?? null,
+        currency: asset.currency || "CNY",
         note: asset.note || "",
+        tags: asset.tags || "",
       };
       this.assetErrors = {
         name: "",
         quantity: "",
         cost: "",
+        currentPrice: "",
       };
     },
     cancelEdit() {
@@ -484,6 +683,7 @@ createApp({
       try {
         await this.apiFetch(`/api/portfolio/${id}`, { method: "DELETE" });
         this.portfolio = this.portfolio.filter((asset) => asset.id !== id);
+        await this.loadTransactions();
         this.setNotice(this.t("assetDeleted"), "success");
       } catch (error) {
         this.setNotice(error.message || this.t("deleteFailed"), "error");
@@ -506,6 +706,7 @@ createApp({
       localStorage.removeItem("pm_token");
       localStorage.removeItem("pm_email");
       this.portfolio = [];
+      this.transactions = [];
       this.resetAssetForm();
       if (this.chart) {
         this.chart.destroy();
@@ -531,7 +732,9 @@ createApp({
       if (!ctx) return;
       const dataSource = this.visiblePortfolio;
       const labels = dataSource.map((item) => item.name);
-      const values = dataSource.map((item) => item.totalCost);
+      const values = dataSource.map((item) =>
+        this.chartMetric === "market" ? this.marketValue(item) : item.totalCost
+      );
       const colors = this.generateChartColors(values.length);
 
       if (this.chart) {
@@ -585,6 +788,7 @@ createApp({
         this.userEmail = profile.email;
         localStorage.setItem("pm_email", profile.email);
         await this.loadPortfolio();
+        await this.loadTransactions();
       } catch (error) {
         this.logout();
       }
@@ -594,7 +798,13 @@ createApp({
     this.updateDocumentLang();
     this.init();
     watch(
-      () => [this.portfolio, this.filters.query, this.filters.category, this.filters.sort],
+      () => [
+        this.portfolio,
+        this.filters.query,
+        this.filters.category,
+        this.filters.sort,
+        this.chartMetric,
+      ],
       () => this.$nextTick(() => this.renderChart()),
       { deep: true }
     );
