@@ -20,6 +20,13 @@ def ensure_holdings_category():
             conn.execute(text("UPDATE holdings SET category = '股票' WHERE category IS NULL"))
 
 
+def ensure_holdings_note():
+    with engine.begin() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(holdings)")).fetchall()}
+        if "note" not in columns:
+            conn.execute(text("ALTER TABLE holdings ADD COLUMN note VARCHAR"))
+
+
 def get_db():
     db = SessionLocal()
     try:

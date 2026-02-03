@@ -209,9 +209,28 @@
                   />
                   <span class="field-error" v-if="assetErrors.cost">{{ assetErrors.cost }}</span>
                 </label>
-                <button type="submit" class="primary-btn" :disabled="isLoading.save">
-                  {{ isLoading.save ? t("saving") : t("saveAsset") }}
-                </button>
+                <label>
+                  {{ t("assetNote") }}
+                  <textarea
+                    v-model="assetForm.note"
+                    :placeholder="t('assetNotePlaceholder')"
+                    rows="3"
+                  ></textarea>
+                </label>
+                <div class="form-actions">
+                  <button type="submit" class="primary-btn" :disabled="isLoading.save">
+                    {{ isLoading.save ? t("saving") : editingLabel }}
+                  </button>
+                  <button
+                    v-if="isEditing"
+                    type="button"
+                    class="secondary-btn"
+                    @click="cancelEdit"
+                    :disabled="isLoading.save"
+                  >
+                    {{ t("cancelEdit") }}
+                  </button>
+                </div>
               </form>
             </div>
           </div>
@@ -258,7 +277,7 @@
                   <th scope="col">{{ t("statTotalCost") }}</th>
                   <th scope="col">{{ t("costPerShare") }}</th>
                   <th scope="col">{{ t("category") }}</th>
-                  <th scope="col">{{ t("delete") }}</th>
+                  <th scope="col">{{ t("actions") }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -271,6 +290,7 @@
                         {{ t("avgCostLabel", { value: currency(asset.totalCost / asset.quantity) }) }}
                       </span>
                     </div>
+                    <div class="asset-note" v-if="asset.note">{{ asset.note }}</div>
                   </td>
                   <td>
                     <span class="cell-label">{{ t("quantity") }}</span>
@@ -289,13 +309,18 @@
                     <span class="cell-value">{{ categoryLabel(asset.category) }}</span>
                   </td>
                   <td>
-                    <button
-                      class="delete-btn"
-                      @click="deleteAsset(asset.id)"
-                      :disabled="isLoading.deletingId === asset.id"
-                    >
-                      {{ isLoading.deletingId === asset.id ? t("deleting") : t("delete") }}
-                    </button>
+                    <div class="table-actions-cell">
+                      <button class="ghost-btn" type="button" @click="startEdit(asset)">
+                        {{ t("edit") }}
+                      </button>
+                      <button
+                        class="delete-btn"
+                        @click="deleteAsset(asset.id)"
+                        :disabled="isLoading.deletingId === asset.id"
+                      >
+                        {{ isLoading.deletingId === asset.id ? t("deleting") : t("delete") }}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>

@@ -10,8 +10,10 @@ router = APIRouter()
 CATEGORY_MAP = {
     "股票": "股票",
     "虚拟币": "虚拟币",
+    "ETF": "ETF",
     "stock": "股票",
     "crypto": "虚拟币",
+    "etf": "ETF",
 }
 
 
@@ -29,6 +31,7 @@ def list_portfolio(user: User = Depends(require_user), db=Depends(get_db)):
             category=holding.category,
             quantity=holding.quantity,
             totalCost=holding.total_cost,
+            note=holding.note,
         )
         for holding in holdings
     ]
@@ -42,6 +45,7 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
     category = CATEGORY_MAP.get(raw_category) or CATEGORY_MAP.get(raw_category.lower())
     if not category:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category.")
+    note = payload.note.strip() if payload.note else None
 
     holding = db.execute(
         select(Holding).where(Holding.user_id == user.id, Holding.name == payload.name.strip())
@@ -52,6 +56,7 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
         holding.quantity += payload.quantity
         holding.total_cost += payload.cost
         holding.category = category
+        holding.note = note
         holding.updated_at = now
         db.commit()
         return HoldingResponse(
@@ -60,6 +65,7 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
             category=holding.category,
             quantity=holding.quantity,
             totalCost=holding.total_cost,
+            note=holding.note,
         )
 
     holding = Holding(
@@ -68,6 +74,7 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
         category=category,
         quantity=payload.quantity,
         total_cost=payload.cost,
+        note=note,
         created_at=now,
         updated_at=now,
     )
@@ -80,6 +87,52 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
         category=holding.category,
         quantity=holding.quantity,
         totalCost=holding.total_cost,
+        note=holding.note,
+    )
+
+
+@router.put("/api/portfolio/{holding_id}", response_model=HoldingResponse)
+def update_portfolio(
+    holding_id: int, payload: PortfolioPayload, user: User = Depends(require_user), db=Depends(get_db)
+):
+    if payload.quantity <= 0 or payload.cost < 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid portfolio data.")
+    raw_category = payload.category.strip()
+    category = CATEGORY_MAP.get(raw_category) or CATEGORY_MAP.get(raw_category.lower())
+    if not category:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category.")
+    note = payload.note.strip() if payload.note else None
+
+    holding = db.execute(
+        select(Holding).where(Holding.id == holding_id, Holding.user_id == user.id)
+    ).scalar_one_or_none()
+    if not holding:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Holding not found.")
+
+    next_name = payload.name.strip()
+    if next_name != holding.name:
+        conflict = db.execute(
+            select(Holding).where(Holding.user_id == user.id, Holding.name == next_name)
+        ).scalar_one_or_none()
+        if conflict:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Holding name already exists."
+            )
+
+    holding.name = next_name
+    holding.category = category
+    holding.quantity = payload.quantity
+    holding.total_cost = payload.cost
+    holding.note = note
+    holding.updated_at = now_utc()
+    db.commit()
+    return HoldingResponse(
+        id=holding.id,
+        name=holding.name,
+        category=holding.category,
+        quantity=holding.quantity,
+        totalCost=holding.total_cost,
+        note=holding.note,
     )
 
 

@@ -38,8 +38,11 @@ createApp({
           quantity: "数量",
           totalCost: "买入总价 ({currency})",
           saveAsset: "保存持仓",
+          updateAsset: "更新持仓",
+          cancelEdit: "取消编辑",
           tableTitle: "持仓明细",
           tableSubtitle: "点击删除移除资产。",
+          actions: "操作",
           searchPlaceholder: "搜索资产名称",
           filterCategory: "全部分类",
           filterAll: "全部",
@@ -51,17 +54,22 @@ createApp({
           clearFilters: "清除筛选",
           avgCostLabel: "平均成本 {value}",
           costPerShare: "成本/股",
+          assetNote: "备注",
+          assetNotePlaceholder: "比如：长期持有/短线策略",
+          edit: "编辑",
           delete: "删除",
           emptyState: "暂无资产，先添加一笔持仓吧。",
           emptyStateFiltered: "没有匹配的资产，请调整筛选条件。",
           categoryStock: "股票",
           categoryCrypto: "虚拟币",
+          categoryEtf: "ETF",
           loginFailed: "登录失败",
           loginSuccess: "登录成功",
           registerSuccess: "注册成功，请登录",
           registerFailed: "注册失败",
           invalidAsset: "请输入有效的资产信息",
           assetSaved: "持仓已保存",
+          assetUpdated: "持仓已更新",
           saveFailed: "保存失败",
           assetDeleted: "持仓已删除",
           deleteFailed: "删除失败",
@@ -107,8 +115,11 @@ createApp({
           quantity: "Quantity",
           totalCost: "Total cost ({currency})",
           saveAsset: "Save holding",
+          updateAsset: "Update holding",
+          cancelEdit: "Cancel edit",
           tableTitle: "Holdings",
           tableSubtitle: "Click delete to remove assets.",
+          actions: "Actions",
           searchPlaceholder: "Search by asset name",
           filterCategory: "All categories",
           filterAll: "All",
@@ -120,17 +131,22 @@ createApp({
           clearFilters: "Clear filters",
           avgCostLabel: "Avg cost {value}",
           costPerShare: "Cost/share",
+          assetNote: "Notes",
+          assetNotePlaceholder: "Example: long-term / swing trade",
+          edit: "Edit",
           delete: "Delete",
           emptyState: "No assets yet. Add your first holding.",
           emptyStateFiltered: "No matching holdings. Update your filters to see results.",
           categoryStock: "Stocks",
           categoryCrypto: "Crypto",
+          categoryEtf: "ETF",
           loginFailed: "Login failed",
           loginSuccess: "Signed in successfully",
           registerSuccess: "Registration successful. Please sign in.",
           registerFailed: "Registration failed",
           invalidAsset: "Please enter valid asset information",
           assetSaved: "Holding saved",
+          assetUpdated: "Holding updated",
           saveFailed: "Save failed",
           assetDeleted: "Holding deleted",
           deleteFailed: "Delete failed",
@@ -157,6 +173,7 @@ createApp({
         category: "stock",
         quantity: 1,
         cost: 0,
+        note: "",
       },
       assetErrors: {
         name: "",
@@ -166,6 +183,7 @@ createApp({
       categories: [
         { value: "stock", labelKey: "categoryStock" },
         { value: "crypto", labelKey: "categoryCrypto" },
+        { value: "etf", labelKey: "categoryEtf" },
       ],
       filters: {
         query: "",
@@ -176,6 +194,7 @@ createApp({
       token: localStorage.getItem("pm_token") || "",
       userEmail: localStorage.getItem("pm_email") || "",
       chart: null,
+      editingId: null,
       notice: {
         message: "",
         type: "info",
@@ -191,6 +210,12 @@ createApp({
   computed: {
     isAuthed() {
       return Boolean(this.token);
+    },
+    isEditing() {
+      return this.editingId !== null;
+    },
+    editingLabel() {
+      return this.isEditing ? this.t("updateAsset") : this.t("saveAsset");
     },
     localeLabel() {
       return this.locale.startsWith("zh") ? "English" : "中文";
@@ -262,11 +287,13 @@ createApp({
     categoryLabel(value) {
       if (value === "stock" || value === "股票") return this.t("categoryStock");
       if (value === "crypto" || value === "虚拟币") return this.t("categoryCrypto");
+      if (value === "etf" || value === "ETF") return this.t("categoryEtf");
       return value;
     },
     normalizedCategory(value) {
       if (value === "stock" || value === "股票") return "stock";
       if (value === "crypto" || value === "虚拟币") return "crypto";
+      if (value === "etf" || value === "ETF") return "etf";
       return value;
     },
     currency(value) {
@@ -367,35 +394,67 @@ createApp({
       if (this.isLoading.save) return;
       this.isLoading.save = true;
       try {
-        const saved = await this.apiFetch("/api/portfolio", {
-          method: "POST",
-          body: JSON.stringify({
-            name: this.assetForm.name,
-            category: this.assetForm.category,
-            quantity: Number(this.assetForm.quantity),
-            cost: Number(this.assetForm.cost),
-          }),
-        });
-        this.assetForm.name = "";
-        this.assetForm.category = "stock";
-        this.assetForm.quantity = 1;
-        this.assetForm.cost = 0;
-        this.assetErrors = {
-          name: "",
-          quantity: "",
-          cost: "",
+        const wasEditing = this.isEditing;
+        const payload = {
+          name: this.assetForm.name,
+          category: this.assetForm.category,
+          quantity: Number(this.assetForm.quantity),
+          cost: Number(this.assetForm.cost),
+          note: this.assetForm.note.trim() || null,
         };
+        const saved = await this.apiFetch(
+          this.isEditing ? `/api/portfolio/${this.editingId}` : "/api/portfolio",
+          {
+            method: this.isEditing ? "PUT" : "POST",
+            body: JSON.stringify(payload),
+          }
+        );
         const existingIndex = this.portfolio.findIndex((asset) => asset.id === saved.id);
         if (existingIndex >= 0) {
-          this.portfolio.splice(existingIndex, 1);
+          this.portfolio.splice(existingIndex, 1, saved);
+        } else {
+          this.portfolio.unshift(saved);
         }
-        this.portfolio.unshift(saved);
-        this.setNotice(this.t("assetSaved"), "success");
+        this.resetAssetForm();
+        this.setNotice(this.t(wasEditing ? "assetUpdated" : "assetSaved"), "success");
       } catch (error) {
         this.setNotice(error.message || this.t("saveFailed"), "error");
       } finally {
         this.isLoading.save = false;
       }
+    },
+    resetAssetForm() {
+      this.assetForm = {
+        name: "",
+        category: "stock",
+        quantity: 1,
+        cost: 0,
+        note: "",
+      };
+      this.assetErrors = {
+        name: "",
+        quantity: "",
+        cost: "",
+      };
+      this.editingId = null;
+    },
+    startEdit(asset) {
+      this.editingId = asset.id;
+      this.assetForm = {
+        name: asset.name,
+        category: this.normalizedCategory(asset.category),
+        quantity: asset.quantity,
+        cost: asset.totalCost,
+        note: asset.note || "",
+      };
+      this.assetErrors = {
+        name: "",
+        quantity: "",
+        cost: "",
+      };
+    },
+    cancelEdit() {
+      this.resetAssetForm();
     },
     async deleteAsset(id) {
       if (this.isLoading.deletingId) return;
@@ -425,6 +484,7 @@ createApp({
       localStorage.removeItem("pm_token");
       localStorage.removeItem("pm_email");
       this.portfolio = [];
+      this.resetAssetForm();
       if (this.chart) {
         this.chart.destroy();
         this.chart = null;

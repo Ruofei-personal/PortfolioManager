@@ -11,6 +11,7 @@ class PortfolioPayload(BaseModel):
     category: str = "股票"
     quantity: float
     cost: float
+    note: str | None = None
 
 
 class HoldingResponse(BaseModel):
@@ -19,3 +20,4 @@ class HoldingResponse(BaseModel):
     category: str
     quantity: float
     totalCost: float
+    note: str | None = None
