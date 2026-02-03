@@ -24,6 +24,11 @@ def list_portfolio(user: User = Depends(require_user), db=Depends(get_db)):
             category=holding.category,
             quantity=holding.quantity,
             totalCost=holding.total_cost,
+            currency=holding.currency,
+            currentPrice=holding.current_price,
+            riskLevel=holding.risk_level,
+            strategy=holding.strategy,
+            sentiment=holding.sentiment,
             tags=decode_tags(holding.tags),
             note=holding.note,
         )
@@ -33,7 +38,17 @@ def list_portfolio(user: User = Depends(require_user), db=Depends(get_db)):
 
 @router.post("/api/portfolio", response_model=HoldingResponse)
 def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user), db=Depends(get_db)):
-    name, category, note, tags = normalize_portfolio_payload(payload)
+    (
+        name,
+        category,
+        note,
+        tags,
+        currency,
+        current_price,
+        risk_level,
+        strategy,
+        sentiment,
+    ) = normalize_portfolio_payload(payload)
 
     holding = db.execute(
         select(Holding).where(
@@ -46,6 +61,11 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
         holding.quantity += payload.quantity
         holding.total_cost += payload.cost
         holding.category = category
+        holding.currency = currency
+        holding.current_price = current_price
+        holding.risk_level = risk_level
+        holding.strategy = strategy
+        holding.sentiment = sentiment
         if tags:
             merged_tags = {tag.lower(): tag for tag in decode_tags(holding.tags)}
             for tag in tags:
@@ -60,6 +80,11 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
             category=holding.category,
             quantity=holding.quantity,
             totalCost=holding.total_cost,
+            currency=holding.currency,
+            currentPrice=holding.current_price,
+            riskLevel=holding.risk_level,
+            strategy=holding.strategy,
+            sentiment=holding.sentiment,
             tags=decode_tags(holding.tags),
             note=holding.note,
         )
@@ -70,6 +95,11 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
         category=category,
         quantity=payload.quantity,
         total_cost=payload.cost,
+        currency=currency,
+        current_price=current_price,
+        risk_level=risk_level,
+        strategy=strategy,
+        sentiment=sentiment,
         tags=encode_tags(tags),
         note=note,
         created_at=now,
@@ -84,6 +114,11 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
         category=holding.category,
         quantity=holding.quantity,
         totalCost=holding.total_cost,
+        currency=holding.currency,
+        currentPrice=holding.current_price,
+        riskLevel=holding.risk_level,
+        strategy=holding.strategy,
+        sentiment=holding.sentiment,
         tags=decode_tags(holding.tags),
         note=holding.note,
     )
@@ -93,7 +128,17 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
 def update_portfolio(
     holding_id: int, payload: PortfolioPayload, user: User = Depends(require_user), db=Depends(get_db)
 ):
-    next_name, category, note, tags = normalize_portfolio_payload(payload)
+    (
+        next_name,
+        category,
+        note,
+        tags,
+        currency,
+        current_price,
+        risk_level,
+        strategy,
+        sentiment,
+    ) = normalize_portfolio_payload(payload)
 
     holding = db.execute(
         select(Holding).where(Holding.id == holding_id, Holding.user_id == user.id)
@@ -118,6 +163,11 @@ def update_portfolio(
     holding.category = category
     holding.quantity = payload.quantity
     holding.total_cost = payload.cost
+    holding.currency = currency
+    holding.current_price = current_price
+    holding.risk_level = risk_level
+    holding.strategy = strategy
+    holding.sentiment = sentiment
     holding.tags = encode_tags(tags)
     holding.note = note
     holding.updated_at = now_utc()
@@ -128,6 +178,11 @@ def update_portfolio(
         category=holding.category,
         quantity=holding.quantity,
         totalCost=holding.total_cost,
+        currency=holding.currency,
+        currentPrice=holding.current_price,
+        riskLevel=holding.risk_level,
+        strategy=holding.strategy,
+        sentiment=holding.sentiment,
         tags=decode_tags(holding.tags),
         note=holding.note,
     )
