@@ -563,6 +563,11 @@ select {
   margin-top: 4px;
 }
 
+.badge-tag {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+}
+
 .asset-tags {
   display: flex;
   flex-wrap: wrap;
@@ -579,6 +584,30 @@ select {
 .badge-muted {
   background: rgba(124, 92, 255, 0.2);
   color: #c9c4ff;
+}
+
+.tag-insight-list {
+  display: grid;
+  gap: 8px;
+}
+
+.tag-insight-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tag-name {
+  display: block;
+  font-size: 13px;
+}
+
+.tag-cost {
+  font-size: 12px;
+  color: var(--accent);
 }
 
 .table-actions-cell {

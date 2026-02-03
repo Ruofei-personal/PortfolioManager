@@ -210,6 +210,14 @@
                   <span class="field-error" v-if="assetErrors.cost">{{ assetErrors.cost }}</span>
                 </label>
                 <label>
+                  {{ t("assetTags") }}
+                  <input
+                    v-model="assetForm.tags"
+                    type="text"
+                    :placeholder="t('assetTagsPlaceholder')"
+                  />
+                </label>
+                <label>
                   {{ t("assetNote") }}
                   <textarea
                     v-model="assetForm.note"
@@ -276,6 +284,20 @@
                 </div>
               </div>
               <div class="insight-card">
+                <h3>{{ t("tagInsightTitle") }}</h3>
+                <p class="muted">{{ t("tagInsightSubtitle") }}</p>
+                <div class="tag-insight-list" v-if="tagSpotlight.length">
+                  <div class="tag-insight-item" v-for="tag in tagSpotlight" :key="tag.label">
+                    <div>
+                      <strong class="tag-name">#{{ tag.label }}</strong>
+                      <span class="muted">{{ tag.count }} {{ t("statAssets") }}</span>
+                    </div>
+                    <span class="tag-cost">{{ tag.totalCostLabel }}</span>
+                  </div>
+                </div>
+                <p class="muted" v-else>{{ t("tagInsightEmpty") }}</p>
+              </div>
+              <div class="insight-card">
                 <h3>{{ t("presetTitle") }}</h3>
                 <div class="preset-controls">
                   <input v-model.trim="newPresetName" type="text" :placeholder="t('presetPlaceholder')" />
@@ -324,6 +346,10 @@
                   </select>
                 </label>
                 <label class="filter-field">
+                  <span class="filter-label">{{ t("filterTag") }}</span>
+                  <input v-model.trim="filters.tag" type="search" :placeholder="t('filterTagPlaceholder')" />
+                </label>
+                <label class="filter-field">
                   <span class="filter-label">{{ t("filterSort") }}</span>
                   <select v-model="filters.sort">
                     <option value="recent">{{ t("sortRecent") }}</option>
@@ -356,6 +382,9 @@
                       <span class="badge">{{ t("category") }} {{ categoryLabel(asset.category) }}</span>
                       <span class="badge badge-muted">
                         {{ t("avgCostLabel", { value: currency(asset.totalCost / asset.quantity) }) }}
+                      </span>
+                      <span class="badge badge-tag" v-for="tag in asset.tags" :key="tag">
+                        #{{ tag }}
                       </span>
                     </div>
                     <div class="asset-note" v-if="asset.note">{{ asset.note }}</div>

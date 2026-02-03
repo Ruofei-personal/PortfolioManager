@@ -4,6 +4,7 @@ const defaultFilters = {
   query: "",
   category: "all",
   sort: "recent",
+  tag: "",
 };
 
 const loadStoredFilters = () => {
@@ -19,6 +20,9 @@ const loadStoredFilters = () => {
     }
     if (typeof next.query !== "string") {
       next.query = defaultFilters.query;
+    }
+    if (typeof next.tag !== "string") {
+      next.tag = defaultFilters.tag;
     }
     return next;
   } catch (error) {
@@ -109,8 +113,12 @@ createApp({
           sortTotalCost: "总投入",
           sortQuantity: "数量",
           clearFilters: "清除筛选",
+          filterTag: "标签筛选",
+          filterTagPlaceholder: "输入标签关键词",
           avgCostLabel: "平均成本 {value}",
           costPerShare: "成本/股",
+          assetTags: "标签",
+          assetTagsPlaceholder: "用逗号分隔，例如：高风险, 长期",
           assetNote: "备注",
           assetNotePlaceholder: "比如：长期持有/短线策略",
           edit: "编辑",
@@ -158,6 +166,9 @@ createApp({
           presetPlaceholder: "保存当前筛选为视图名称",
           presetSave: "保存视图",
           presetEmpty: "还没有保存视图",
+          tagInsightTitle: "标签热点",
+          tagInsightSubtitle: "查看常用标签与投入占比。",
+          tagInsightEmpty: "添加标签后，这里会显示热门标签",
           achievementTitle: "成就墙",
           achievementFirst: "首次建仓",
           achievementDiversified: "多元配置",
@@ -213,8 +224,12 @@ createApp({
           sortTotalCost: "Total invested",
           sortQuantity: "Quantity",
           clearFilters: "Clear filters",
+          filterTag: "Tag filter",
+          filterTagPlaceholder: "Search tags",
           avgCostLabel: "Avg cost {value}",
           costPerShare: "Cost/share",
+          assetTags: "Tags",
+          assetTagsPlaceholder: "Comma-separated, e.g. high-risk, long-term",
           assetNote: "Notes",
           assetNotePlaceholder: "Example: long-term / swing trade",
           edit: "Edit",
@@ -262,6 +277,9 @@ createApp({
           presetPlaceholder: "Save current filters as a view",
           presetSave: "Save view",
           presetEmpty: "No saved views yet",
+          tagInsightTitle: "Tag spotlight",
+          tagInsightSubtitle: "See the most-used tags in your portfolio.",
+          tagInsightEmpty: "Add tags to surface your top themes.",
           achievementTitle: "Achievements",
           achievementFirst: "First holding",
           achievementDiversified: "Diversified",
@@ -284,6 +302,7 @@ createApp({
         category: "stock",
         quantity: 1,
         cost: 0,
+        tags: "",
         note: "",
       },
       assetErrors: {
@@ -443,6 +462,25 @@ createApp({
       }
       return achievements;
     },
+    tagSpotlight() {
+      const stats = new Map();
+      this.portfolio.forEach((asset) => {
+        (asset.tags || []).forEach((tag) => {
+          const key = tag.toLowerCase();
+          const entry = stats.get(key) || { label: tag, count: 0, totalCost: 0 };
+          entry.count += 1;
+          entry.totalCost += asset.totalCost;
+          stats.set(key, entry);
+        });
+      });
+      return Array.from(stats.values())
+        .sort((a, b) => b.totalCost - a.totalCost || b.count - a.count)
+        .slice(0, 6)
+        .map((entry) => ({
+          ...entry,
+          totalCostLabel: this.currency(entry.totalCost),
+        }));
+    },
     canSavePreset() {
       return this.newPresetName.trim().length > 0;
     },
@@ -455,6 +493,12 @@ createApp({
       if (this.filters.category !== "all") {
         list = list.filter(
           (asset) => this.normalizedCategory(asset.category) === this.filters.category
+        );
+      }
+      const tagQuery = this.filters.tag.trim().toLowerCase();
+      if (tagQuery) {
+        list = list.filter((asset) =>
+          (asset.tags || []).some((tag) => tag.toLowerCase().includes(tagQuery))
         );
       }
       if (this.filters.sort === "name") {
@@ -470,7 +514,8 @@ createApp({
       return (
         this.filters.query.trim().length > 0 ||
         this.filters.category !== "all" ||
-        this.filters.sort !== "recent"
+        this.filters.sort !== "recent" ||
+        this.filters.tag.trim().length > 0
       );
     },
   },
@@ -510,6 +555,16 @@ createApp({
         maximumFractionDigits: 2,
       });
       return formatter.format(Number(value) || 0);
+    },
+    parseTags(value) {
+      if (!value) return [];
+      const tags = value
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+      return Array.from(new Set(tags.map((tag) => tag.toLowerCase()))).map(
+        (tagLower) => tags.find((tag) => tag.toLowerCase() === tagLower) || tagLower
+      );
     },
     clearAssetError(field) {
       if (this.assetErrors[field]) {
@@ -607,6 +662,7 @@ createApp({
           category: this.assetForm.category,
           quantity: Number(this.assetForm.quantity),
           cost: Number(this.assetForm.cost),
+          tags: this.parseTags(this.assetForm.tags),
           note: this.assetForm.note.trim() || null,
         };
         const saved = await this.apiFetch(
@@ -636,6 +692,7 @@ createApp({
         category: "stock",
         quantity: 1,
         cost: 0,
+        tags: "",
         note: "",
       };
       this.assetErrors = {
@@ -652,6 +709,7 @@ createApp({
         category: this.normalizedCategory(asset.category),
         quantity: asset.quantity,
         cost: asset.totalCost,
+        tags: (asset.tags || []).join(", "),
         note: asset.note || "",
       };
       this.assetErrors = {
@@ -761,6 +819,7 @@ createApp({
         query: "",
         category: "all",
         sort: "recent",
+        tag: "",
       };
     },
     async init() {

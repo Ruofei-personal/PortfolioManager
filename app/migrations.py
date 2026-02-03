@@ -20,6 +20,14 @@ def ensure_holdings_note() -> None:
             conn.execute(text("ALTER TABLE holdings ADD COLUMN note VARCHAR"))
 
 
+def ensure_holdings_tags() -> None:
+    with engine.begin() as conn:
+        columns = {row[1] for row in conn.execute(text("PRAGMA table_info(holdings)")).fetchall()}
+        if "tags" not in columns:
+            conn.execute(text("ALTER TABLE holdings ADD COLUMN tags VARCHAR"))
+
+
 def run_migrations() -> None:
     ensure_holdings_category()
     ensure_holdings_note()
+    ensure_holdings_tags()

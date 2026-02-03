@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class AuthPayload(BaseModel):
@@ -11,6 +11,7 @@ class PortfolioPayload(BaseModel):
     category: str = "股票"
     quantity: float
     cost: float
+    tags: list[str] = Field(default_factory=list)
     note: str | None = None
 
 
@@ -20,4 +21,5 @@ class HoldingResponse(BaseModel):
     category: str
     quantity: float
     totalCost: float
+    tags: list[str] = Field(default_factory=list)
     note: str | None = None
