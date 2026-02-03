@@ -468,11 +468,9 @@ createApp({
     },
     stats() {
       const total = this.visiblePortfolio.reduce((sum, item) => sum + (item.totalCost || 0), 0);
-      const totalQty = this.visiblePortfolio.reduce((sum, item) => sum + item.quantity, 0);
       return {
         assetCount: this.visiblePortfolio.length,
         totalCost: this.currency(total || 0),
-        averageCost: this.currency(totalQty ? total / totalQty : 0),
       };
     },
     visiblePortfolio() {
