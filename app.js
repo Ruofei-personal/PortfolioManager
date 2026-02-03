@@ -13,9 +13,11 @@ createApp({
       },
       assetForm: {
         name: "",
+        category: "股票",
         quantity: 1,
         cost: 0,
       },
+      categories: ["股票", "虚拟币"],
       portfolio: [],
       token: localStorage.getItem("pm_token") || "",
       userEmail: localStorage.getItem("pm_email") || "",
@@ -103,11 +105,13 @@ createApp({
           method: "POST",
           body: JSON.stringify({
             name: this.assetForm.name,
+            category: this.assetForm.category,
             quantity: Number(this.assetForm.quantity),
             cost: Number(this.assetForm.cost),
           }),
         });
         this.assetForm.name = "";
+        this.assetForm.category = "股票";
         this.assetForm.quantity = 1;
         this.assetForm.cost = 0;
         await this.loadPortfolio();

@@ -8,6 +8,7 @@ class AuthPayload(BaseModel):
 
 class PortfolioPayload(BaseModel):
     name: str
+    category: str = "股票"
     quantity: float
     cost: float
 
@@ -15,5 +16,6 @@ class PortfolioPayload(BaseModel):
 class HoldingResponse(BaseModel):
     id: int
     name: str
+    category: str
     quantity: float
     totalCost: float

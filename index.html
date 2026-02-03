@@ -113,6 +113,14 @@
                   <input v-model="assetForm.name" type="text" placeholder="Apple / AAPL" required />
                 </label>
                 <label>
+                  分类
+                  <select v-model="assetForm.category" required>
+                    <option v-for="option in categories" :key="option" :value="option">
+                      {{ option }}
+                    </option>
+                  </select>
+                </label>
+                <label>
                   数量
                   <input v-model.number="assetForm.quantity" type="number" min="1" step="1" required />
                 </label>
@@ -134,7 +142,10 @@
               <div class="asset-row" v-for="asset in portfolio" :key="asset.id">
                 <div>
                   <div class="asset-name">{{ asset.name }}</div>
-                  <span class="badge">平均成本 {{ currency(asset.totalCost / asset.quantity) }}</span>
+                  <div class="asset-tags">
+                    <span class="badge">分类 {{ asset.category }}</span>
+                    <span class="badge badge-muted">平均成本 {{ currency(asset.totalCost / asset.quantity) }}</span>
+                  </div>
                 </div>
                 <div>
                   <header>数量</header>
@@ -147,6 +158,10 @@
                 <div>
                   <header>成本/股</header>
                   <div>{{ currency(asset.totalCost / asset.quantity) }}</div>
+                </div>
+                <div>
+                  <header>分类</header>
+                  <div>{{ asset.category }}</div>
                 </div>
                 <div>
                   <button class="delete-btn" @click="deleteAsset(asset.id)">删除</button>
