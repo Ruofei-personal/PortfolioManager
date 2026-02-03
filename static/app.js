@@ -114,8 +114,13 @@ createApp({
       locale: localStorage.getItem("pm_locale") || (navigator.language.startsWith("zh") ? "zh-CN" : "en-US"),
       translations: {
         "zh-CN": {
+          localeEnglish: "English",
+          localeChinese: "中文",
           brandTitle: "Portfolio Manager",
           brandSubtitle: "你的持仓，轻松掌控",
+          metaTitle: "Portfolio Manager",
+          metaDescription: "Portfolio Manager 帮你追踪持仓、可视化占比，并轻松管理投资组合。",
+          metaLocale: "zh_CN",
           logout: "退出登录",
           welcomeBack: "欢迎回来",
           welcomeSubtitle: "登录后管理你的投资组合。",
@@ -150,6 +155,7 @@ createApp({
           cancelEdit: "取消编辑",
           tableTitle: "持仓明细",
           tableSubtitle: "点击删除移除资产。",
+          tableAriaHoldings: "持仓列表",
           actions: "操作",
           searchPlaceholder: "搜索资产名称",
           filterCategory: "全部分类",
@@ -242,6 +248,7 @@ createApp({
           importSubtitle: "支持 CSV 批量导入与导出。",
           importHint: "CSV 列：name,category,quantity,cost,currency,currentPrice,riskLevel,strategy,sentiment,tags,note",
           exportCsv: "导出 CSV",
+          exportFileName: "持仓.csv",
           importSuccess: "导入完成",
           importFailed: "导入失败",
           timelineTitle: "投资时间线",
@@ -272,8 +279,14 @@ createApp({
           achievementEmpty: "完成一次操作即可解锁成就",
         },
         "en-US": {
+          localeEnglish: "English",
+          localeChinese: "中文",
           brandTitle: "Portfolio Manager",
           brandSubtitle: "Track your holdings with ease",
+          metaTitle: "Portfolio Manager",
+          metaDescription:
+            "Portfolio Manager helps you track holdings, visualize allocation, and manage investments with ease.",
+          metaLocale: "en_US",
           logout: "Sign out",
           welcomeBack: "Welcome back",
           welcomeSubtitle: "Log in to manage your portfolio.",
@@ -308,6 +321,7 @@ createApp({
           cancelEdit: "Cancel edit",
           tableTitle: "Holdings",
           tableSubtitle: "Click delete to remove assets.",
+          tableAriaHoldings: "Holdings table",
           actions: "Actions",
           searchPlaceholder: "Search by asset name",
           filterCategory: "All categories",
@@ -400,6 +414,7 @@ createApp({
           importSubtitle: "Bulk import and export via CSV.",
           importHint: "CSV columns: name,category,quantity,cost,currency,currentPrice,riskLevel,strategy,sentiment,tags,note",
           exportCsv: "Export CSV",
+          exportFileName: "portfolio.csv",
           importSuccess: "Import complete",
           importFailed: "Import failed",
           timelineTitle: "Investment timeline",
@@ -502,7 +517,7 @@ createApp({
       return this.isEditing ? this.t("updateAsset") : this.t("saveAsset");
     },
     localeLabel() {
-      return this.locale.startsWith("zh") ? "English" : "中文";
+      return this.locale.startsWith("zh") ? this.t("localeEnglish") : this.t("localeChinese");
     },
     currencyCode() {
       return this.displayCurrency;
@@ -792,9 +807,24 @@ createApp({
       this.locale = this.locale.startsWith("zh") ? "en-US" : "zh-CN";
       localStorage.setItem("pm_locale", this.locale);
       this.updateDocumentLang();
+      this.updateDocumentMeta();
     },
     updateDocumentLang() {
       document.documentElement.setAttribute("lang", this.locale);
+    },
+    updateDocumentMeta() {
+      document.title = this.t("metaTitle");
+      const setMeta = (selector, content) => {
+        const meta = document.querySelector(selector);
+        if (meta) meta.setAttribute("content", content);
+      };
+      const description = this.t("metaDescription");
+      setMeta('meta[name="description"]', description);
+      setMeta('meta[property="og:title"]', this.t("metaTitle"));
+      setMeta('meta[property="og:description"]', description);
+      setMeta('meta[property="og:locale"]', this.t("metaLocale"));
+      setMeta('meta[name="twitter:title"]', this.t("metaTitle"));
+      setMeta('meta[name="twitter:description"]', description);
     },
     categoryLabel(value) {
       if (value === "stock" || value === "股票") return this.t("categoryStock");
@@ -1291,7 +1321,7 @@ createApp({
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = "portfolio.csv";
+      link.download = this.t("exportFileName");
       link.click();
       URL.revokeObjectURL(link.href);
     },
@@ -1334,6 +1364,7 @@ createApp({
   },
   mounted() {
     this.updateDocumentLang();
+    this.updateDocumentMeta();
     this.init();
     watch(
       () => [
