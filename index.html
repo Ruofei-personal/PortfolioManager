@@ -542,7 +542,7 @@
                 {{ t("clearFilters") }}
               </button>
             </div>
-            <table class="table" v-if="visiblePortfolio.length" aria-label="Holdings">
+            <table class="table" v-if="visiblePortfolio.length" :aria-label="t('tableAriaHoldings')">
               <thead>
                 <tr>
                   <th scope="col">{{ t("assetName") }}</th>
