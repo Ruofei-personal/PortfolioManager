@@ -1,116 +1,4 @@
-const { createApp, computed, watch } = Vue;
-
-const defaultFilters = {
-  query: "",
-  category: "all",
-  sort: "recent",
-  tag: "",
-  risk: "all",
-};
-
-const loadStoredFilters = () => {
-  try {
-    const stored = JSON.parse(localStorage.getItem("pm_filters") || "null");
-    if (!stored || typeof stored !== "object") return { ...defaultFilters };
-    const next = { ...defaultFilters, ...stored };
-    if (!["all", "stock", "crypto", "etf"].includes(next.category)) {
-      next.category = defaultFilters.category;
-    }
-    if (!["recent", "name", "totalCost", "quantity"].includes(next.sort)) {
-      next.sort = defaultFilters.sort;
-    }
-    if (typeof next.query !== "string") {
-      next.query = defaultFilters.query;
-    }
-    if (typeof next.tag !== "string") {
-      next.tag = defaultFilters.tag;
-    }
-    if (!["all", "low", "medium", "high"].includes(next.risk)) {
-      next.risk = defaultFilters.risk;
-    }
-    return next;
-  } catch (error) {
-    return { ...defaultFilters };
-  }
-};
-
-const defaultTargets = {
-  stock: 60,
-  crypto: 20,
-  etf: 20,
-};
-
-const loadStoredTargets = () => {
-  try {
-    const stored = JSON.parse(localStorage.getItem("pm_targets") || "null");
-    if (!stored || typeof stored !== "object") return { ...defaultTargets };
-    const next = { ...defaultTargets, ...stored };
-    Object.keys(defaultTargets).forEach((key) => {
-      const value = Number(next[key]);
-      next[key] = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : defaultTargets[key];
-    });
-    return next;
-  } catch (error) {
-    return { ...defaultTargets };
-  }
-};
-
-const loadStoredPresets = () => {
-  try {
-    const stored = JSON.parse(localStorage.getItem("pm_view_presets") || "null");
-    if (!Array.isArray(stored)) return [];
-    return stored.filter((preset) => preset && typeof preset.name === "string" && preset.filters);
-  } catch (error) {
-    return [];
-  }
-};
-
-const defaultRates = {
-  USD: 1,
-  CNY: 0.14,
-  EUR: 1.08,
-  JPY: 0.0067,
-};
-
-const loadStoredRates = () => {
-  try {
-    const stored = JSON.parse(localStorage.getItem("pm_currency_rates") || "null");
-    if (!stored || typeof stored !== "object") return { ...defaultRates };
-    const next = { ...defaultRates, ...stored };
-    Object.keys(next).forEach((code) => {
-      const value = Number(next[code]);
-      next[code] = Number.isFinite(value) && value > 0 ? value : defaultRates[code];
-    });
-    return next;
-  } catch (error) {
-    return { ...defaultRates };
-  }
-};
-
-const loadStoredBudget = () => {
-  const raw = Number(localStorage.getItem("pm_budget") || 0);
-  return Number.isFinite(raw) && raw >= 0 ? raw : 0;
-};
-
-const loadStoredHistory = () => {
-  try {
-    const stored = JSON.parse(localStorage.getItem("pm_value_history") || "null");
-    if (!Array.isArray(stored)) return [];
-    return stored.filter((entry) => entry && typeof entry.value === "number" && entry.timestamp);
-  } catch (error) {
-    return [];
-  }
-};
-
-const loadStoredEvents = () => {
-  try {
-    const stored = JSON.parse(localStorage.getItem("pm_events") || "null");
-    if (!Array.isArray(stored)) return [];
-    return stored.filter((entry) => entry && entry.id && entry.timestamp);
-  } catch (error) {
-    return [];
-  }
-};
+const { createApp } = Vue;
 
 createApp({
   data() {
@@ -150,18 +38,19 @@ createApp({
           mosaicTitle: "资产热力拼图",
           mosaicSubtitle: "按占比大小与盈亏颜色生成的迷你热区。",
           mosaicEmpty: "暂无可视化数据，添加持仓后自动生成。",
-          formTitle: "新增/加仓",
-          formSubtitle: "记录你的每一笔买入。",
+          formTitle: "新增持仓",
+          formSubtitle: "只填必要信息即可。",
           assetName: "资产名称",
           assetNamePlaceholder: "Apple / AAPL",
           category: "分类",
           quantity: "数量",
           totalCost: "买入总价 ({currency})",
+          totalCostSimple: "买入总价",
           saveAsset: "保存持仓",
           updateAsset: "更新持仓",
           cancelEdit: "取消编辑",
           tableTitle: "持仓明细",
-          tableSubtitle: "点击删除移除资产。",
+          tableSubtitle: "登录后只展示你的持仓。",
           tableAriaHoldings: "持仓列表",
           actions: "操作",
           searchPlaceholder: "搜索资产名称",
@@ -329,18 +218,19 @@ createApp({
           mosaicTitle: "Allocation mosaic",
           mosaicSubtitle: "Tiles sized by weight and tinted by performance.",
           mosaicEmpty: "No data yet. Add holdings to generate the mosaic.",
-          formTitle: "Add / buy more",
-          formSubtitle: "Log every buy in one place.",
+          formTitle: "Add holding",
+          formSubtitle: "Only the essentials.",
           assetName: "Asset name",
           assetNamePlaceholder: "Apple / AAPL",
           category: "Category",
           quantity: "Quantity",
           totalCost: "Total cost ({currency})",
+          totalCostSimple: "Total cost",
           saveAsset: "Save holding",
           updateAsset: "Update holding",
           cancelEdit: "Cancel edit",
           tableTitle: "Holdings",
-          tableSubtitle: "Click delete to remove assets.",
+          tableSubtitle: "Show only your holdings after login.",
           tableAriaHoldings: "Holdings table",
           actions: "Actions",
           searchPlaceholder: "Search by asset name",
@@ -488,12 +378,12 @@ createApp({
         category: "stock",
         quantity: 1,
         cost: 0,
-        currency: "USD",
+        currency: navigator.language.startsWith("zh") ? "CNY" : "USD",
         currentPrice: null,
         riskLevel: "medium",
         strategy: "",
         sentiment: "",
-        tags: "",
+        tags: [],
         note: "",
       },
       assetErrors: {
@@ -506,23 +396,9 @@ createApp({
         { value: "crypto", labelKey: "categoryCrypto" },
         { value: "etf", labelKey: "categoryEtf" },
       ],
-      currencyOptions: ["USD", "CNY", "EUR", "JPY"],
-      currencyRates: loadStoredRates(),
-      displayCurrency:
-        localStorage.getItem("pm_display_currency") ||
-        (navigator.language.startsWith("zh") ? "CNY" : "USD"),
-      monthlyBudget: loadStoredBudget(),
-      valueHistory: loadStoredHistory(),
-      events: loadStoredEvents(),
-      filters: loadStoredFilters(),
       portfolio: [],
-      allocationTargets: loadStoredTargets(),
-      presets: loadStoredPresets(),
-      newPresetName: "",
       token: localStorage.getItem("pm_token") || "",
       userEmail: localStorage.getItem("pm_email") || "",
-      chart: null,
-      valueChart: null,
       editingId: null,
       notice: {
         message: "",
@@ -550,17 +426,10 @@ createApp({
       return this.locale.startsWith("zh") ? this.t("localeEnglish") : this.t("localeChinese");
     },
     currencyCode() {
-      return this.displayCurrency;
-    },
-    currencySymbol() {
-      const parts = new Intl.NumberFormat(this.locale, {
-        style: "currency",
-        currency: this.currencyCode,
-      }).formatToParts(0);
-      return parts.find((part) => part.type === "currency")?.value || this.currencyCode;
+      return this.locale.startsWith("zh") ? "CNY" : "USD";
     },
     stats() {
-      const total = this.visiblePortfolio.reduce((sum, item) => sum + this.convertedCost(item), 0);
+      const total = this.visiblePortfolio.reduce((sum, item) => sum + (item.totalCost || 0), 0);
       const totalQty = this.visiblePortfolio.reduce((sum, item) => sum + item.quantity, 0);
       return {
         assetCount: this.visiblePortfolio.length,
@@ -568,336 +437,8 @@ createApp({
         averageCost: this.currency(totalQty ? total / totalQty : 0),
       };
     },
-    allocationMosaic() {
-      const total = this.visiblePortfolio.reduce((sum, item) => sum + this.convertedCost(item), 0);
-      if (!total) return [];
-      return this.visiblePortfolio
-        .map((asset) => {
-          const cost = this.convertedCost(asset);
-          const marketValue = this.convertedMarketValue(asset);
-          const returnRate = cost ? (marketValue - cost) / cost : 0;
-          const span = Math.max(2, Math.min(8, Math.round((cost / total) * 12)));
-          return {
-            id: asset.id,
-            name: asset.name,
-            percent: Math.round((cost / total) * 100),
-            span,
-            returnLabel: `${(returnRate * 100).toFixed(1)}%`,
-            performanceClass: returnRate > 0.01 ? "positive" : returnRate < -0.01 ? "negative" : "neutral",
-            valueLabel: this.currency(cost),
-            marketLabel: this.currency(marketValue),
-          };
-        })
-        .sort((a, b) => b.percent - a.percent)
-        .slice(0, 10);
-    },
-    allocationBreakdown() {
-      const totals = this.visiblePortfolio.reduce(
-        (acc, asset) => {
-          const key = this.normalizedCategory(asset.category);
-          if (!acc[key]) acc[key] = 0;
-          acc[key] += this.convertedCost(asset);
-          return acc;
-        },
-        { stock: 0, crypto: 0, etf: 0 }
-      );
-      const total = Object.values(totals).reduce((sum, value) => sum + value, 0);
-      return this.categories.map((category) => {
-        const value = totals[category.value] || 0;
-        const percent = total ? Math.round((value / total) * 100) : 0;
-        const target = Number(this.allocationTargets[category.value]) || 0;
-        const delta = percent - target;
-        const deltaStatus = delta > 2 ? "over" : delta < -2 ? "under" : "match";
-        let deltaLabel = this.t("targetDeltaMatch");
-        if (deltaStatus === "over") {
-          deltaLabel = this.t("targetDeltaOver", { value: Math.abs(delta) });
-        } else if (deltaStatus === "under") {
-          deltaLabel = this.t("targetDeltaUnder", { value: Math.abs(delta) });
-        }
-        return {
-          key: category.value,
-          label: this.t(category.labelKey),
-          percent,
-          target,
-          deltaStatus,
-          deltaLabel,
-        };
-      });
-    },
-    targetTotal() {
-      return Object.values(this.allocationTargets).reduce((sum, value) => sum + Number(value || 0), 0);
-    },
-    healthChecks() {
-      const total = this.visiblePortfolio.reduce((sum, item) => sum + this.convertedCost(item), 0);
-      const categories = new Set(this.visiblePortfolio.map((asset) => this.normalizedCategory(asset.category)));
-      const topHolding = this.visiblePortfolio.reduce(
-        (max, item) => Math.max(max, total ? this.convertedCost(item) / total : 0),
-        0
-      );
-      const diversificationScore = categories.size;
-      const diversificationStatus = diversificationScore >= 2 ? "good" : "warn";
-      const topHoldingStatus = topHolding > 0.5 ? "warn" : "good";
-      const categoryStatus = categories.size >= 3 ? "good" : "warn";
-      return [
-        {
-          label: this.t("healthDiversification"),
-          value: `${diversificationScore}/3`,
-          status: diversificationStatus,
-          detail:
-            diversificationStatus === "good" ? this.t("healthTipBalanced") : this.t("healthTipExpand"),
-        },
-        {
-          label: this.t("healthTopHolding"),
-          value: `${Math.round(topHolding * 100) || 0}%`,
-          status: topHoldingStatus,
-          detail: topHoldingStatus === "good" ? this.t("healthTipBalanced") : this.t("healthTipFocus"),
-        },
-        {
-          label: this.t("healthCategoryMix"),
-          value: categories.size ? `${Array.from(categories).length} ${this.t("category")}` : "0",
-          status: categoryStatus,
-          detail: categoryStatus === "good" ? this.t("healthTipBalanced") : this.t("healthTipExpand"),
-        },
-      ];
-    },
-    achievements() {
-      const achievements = [];
-      if (this.portfolio.length > 0) {
-        achievements.push(this.t("achievementFirst"));
-      }
-      const categories = new Set(this.portfolio.map((asset) => this.normalizedCategory(asset.category)));
-      if (categories.size >= 2) {
-        achievements.push(this.t("achievementDiversified"));
-      }
-      const total = this.portfolio.reduce((sum, item) => sum + this.convertedCost(item), 0);
-      const topHolding = this.portfolio.reduce(
-        (max, item) => Math.max(max, total ? this.convertedCost(item) / total : 0),
-        0
-      );
-      if (total && topHolding <= 0.5) {
-        achievements.push(this.t("achievementBalanced"));
-      }
-      if (this.portfolio.some((asset) => asset.note && asset.note.trim().length > 0)) {
-        achievements.push(this.t("achievementNoteTaker"));
-      }
-      if (this.portfolio.length >= 5) {
-        achievements.push(this.t("achievementCollector"));
-      }
-      return achievements;
-    },
-    tagSpotlight() {
-      const stats = new Map();
-      this.portfolio.forEach((asset) => {
-        (asset.tags || []).forEach((tag) => {
-          const key = tag.toLowerCase();
-          const entry = stats.get(key) || { label: tag, count: 0, totalCost: 0 };
-          entry.count += 1;
-          entry.totalCost += this.convertedCost(asset);
-          stats.set(key, entry);
-        });
-      });
-      return Array.from(stats.values())
-        .sort((a, b) => b.totalCost - a.totalCost || b.count - a.count)
-        .slice(0, 6)
-        .map((entry) => ({
-          ...entry,
-          totalCostLabel: this.currency(entry.totalCost),
-        }));
-    },
-    performanceStats() {
-      const totalCost = this.portfolio.reduce((sum, asset) => sum + this.convertedCost(asset), 0);
-      const totalValue = this.portfolio.reduce(
-        (sum, asset) => sum + this.convertedMarketValue(asset),
-        0
-      );
-      const profit = totalValue - totalCost;
-      const returnRate = totalCost ? (profit / totalCost) * 100 : 0;
-      const profitClass = profit >= 0 ? "positive" : "negative";
-      let note = this.t("performanceNoteNeutral");
-      if (profit > 0) {
-        note = this.t("performanceNotePositive");
-      } else if (profit < 0) {
-        note = this.t("performanceNoteNegative");
-      }
-      return {
-        marketValue: this.currency(totalValue),
-        profit: this.currency(profit),
-        returnRate: `${returnRate.toFixed(1)}%`,
-        profitClass,
-        note,
-      };
-    },
-    performanceMetrics() {
-      const values = this.valueHistory.map((entry) => entry.value).filter((value) => Number.isFinite(value));
-      if (values.length < 2) {
-        return [
-          { label: this.t("performanceVolatility"), value: this.t("metricUnavailable") },
-          { label: this.t("performanceDrawdown"), value: this.t("metricUnavailable") },
-          { label: this.t("performanceSharpe"), value: this.t("metricUnavailable") },
-          { label: this.t("performanceWinRate"), value: this.t("metricUnavailable") },
-        ];
-      }
-      const returns = [];
-      for (let i = 1; i < values.length; i += 1) {
-        if (values[i - 1] === 0) continue;
-        returns.push((values[i] - values[i - 1]) / values[i - 1]);
-      }
-      const avgReturn = returns.reduce((sum, value) => sum + value, 0) / (returns.length || 1);
-      const variance =
-        returns.reduce((sum, value) => sum + (value - avgReturn) ** 2, 0) / (returns.length || 1);
-      const volatility = Math.sqrt(variance);
-      let peak = values[0];
-      let maxDrawdown = 0;
-      values.forEach((value) => {
-        if (value > peak) peak = value;
-        const drawdown = peak ? (peak - value) / peak : 0;
-        maxDrawdown = Math.max(maxDrawdown, drawdown);
-      });
-      const winRate = returns.filter((value) => value > 0).length / (returns.length || 1);
-      const sharpe = volatility ? (avgReturn / volatility) * Math.sqrt(12) : 0;
-      return [
-        { label: this.t("performanceVolatility"), value: `${(volatility * 100).toFixed(1)}%` },
-        { label: this.t("performanceDrawdown"), value: `${(maxDrawdown * 100).toFixed(1)}%` },
-        { label: this.t("performanceSharpe"), value: sharpe ? sharpe.toFixed(2) : "0.00" },
-        { label: this.t("performanceWinRate"), value: `${(winRate * 100).toFixed(0)}%` },
-      ];
-    },
-    budgetProgress() {
-      if (!this.monthlyBudget) return 0;
-      const totalCost = this.portfolio.reduce((sum, asset) => sum + this.convertedCost(asset), 0);
-      return Math.min(150, Math.round((totalCost / this.monthlyBudget) * 100));
-    },
-    budgetProgressLabel() {
-      return `${Math.round(this.budgetProgress)}%`;
-    },
-    budgetUsedLabel() {
-      const totalCost = this.portfolio.reduce((sum, asset) => sum + this.convertedCost(asset), 0);
-      return this.currency(totalCost);
-    },
-    eventTimeline() {
-      return [...this.events]
-        .sort((a, b) => b.timestamp - a.timestamp)
-        .slice(0, 8)
-        .map((event) => ({
-          ...event,
-          timeLabel: new Date(event.timestamp).toLocaleString(this.locale),
-        }));
-    },
-    riskBreakdown() {
-      const total = this.portfolio.length || 1;
-      const counts = { low: 0, medium: 0, high: 0 };
-      this.portfolio.forEach((asset) => {
-        const level = asset.riskLevel || "medium";
-        if (counts[level] !== undefined) counts[level] += 1;
-      });
-      return [
-        { label: this.t("riskLow"), percent: Math.round((counts.low / total) * 100) },
-        { label: this.t("riskMedium"), percent: Math.round((counts.medium / total) * 100) },
-        { label: this.t("riskHigh"), percent: Math.round((counts.high / total) * 100) },
-      ];
-    },
-    riskScoreLabel() {
-      const scores = { low: 1, medium: 2, high: 3 };
-      const total = this.portfolio.length || 1;
-      const totalScore = this.portfolio.reduce(
-        (sum, asset) => sum + (scores[asset.riskLevel] || 2),
-        0
-      );
-      const normalized = Math.round((totalScore / (total * 3)) * 100);
-      return `${normalized}/100`;
-    },
-    strategyBreakdown() {
-      const counts = new Map();
-      this.portfolio.forEach((asset) => {
-        if (!asset.strategy) return;
-        const label = asset.strategy.trim();
-        if (!label) return;
-        counts.set(label, (counts.get(label) || 0) + 1);
-      });
-      return Array.from(counts.entries()).map(([label, count]) => ({ label, count }));
-    },
-    achievementCards() {
-      if (!this.portfolio.length) return [];
-      const totalHoldings = this.portfolio.length;
-      const withNotes = this.portfolio.filter((asset) => asset.note).length;
-      const withTags = this.portfolio.filter((asset) => (asset.tags || []).length > 0).length;
-      return [
-        {
-          label: this.t("achievementFirst"),
-          subtitle: `${Math.min(totalHoldings, 1)}/1`,
-          progress: Math.min(100, (totalHoldings / 1) * 100),
-        },
-        {
-          label: this.t("achievementCollector"),
-          subtitle: `${Math.min(totalHoldings, 10)}/10`,
-          progress: Math.min(100, (totalHoldings / 10) * 100),
-        },
-        {
-          label: this.t("achievementNoteTaker"),
-          subtitle: `${Math.min(withNotes, 5)}/5`,
-          progress: Math.min(100, (withNotes / 5) * 100),
-        },
-        {
-          label: this.t("achievementDiversified"),
-          subtitle: `${Math.min(withTags, 5)}/5`,
-          progress: Math.min(100, (withTags / 5) * 100),
-        },
-      ];
-    },
-    canSavePreset() {
-      return this.newPresetName.trim().length > 0;
-    },
-    quickFilters() {
-      return [
-        { key: "all", label: this.t("filterAll"), type: "category", value: "all" },
-        ...this.categories.map((category) => ({
-          key: category.value,
-          label: this.t(category.labelKey),
-          type: "category",
-          value: category.value,
-        })),
-        { key: "risk-low", label: this.t("riskLow"), type: "risk", value: "low" },
-        { key: "risk-medium", label: this.t("riskMedium"), type: "risk", value: "medium" },
-        { key: "risk-high", label: this.t("riskHigh"), type: "risk", value: "high" },
-      ];
-    },
     visiblePortfolio() {
-      let list = [...this.portfolio];
-      const query = this.filters.query.trim().toLowerCase();
-      if (query) {
-        list = list.filter((asset) => asset.name.toLowerCase().includes(query));
-      }
-      if (this.filters.category !== "all") {
-        list = list.filter(
-          (asset) => this.normalizedCategory(asset.category) === this.filters.category
-        );
-      }
-      if (this.filters.risk !== "all") {
-        list = list.filter((asset) => (asset.riskLevel || "medium") === this.filters.risk);
-      }
-      const tagQuery = this.filters.tag.trim().toLowerCase();
-      if (tagQuery) {
-        list = list.filter((asset) =>
-          (asset.tags || []).some((tag) => tag.toLowerCase().includes(tagQuery))
-        );
-      }
-      if (this.filters.sort === "name") {
-        list.sort((a, b) => a.name.localeCompare(b.name));
-      } else if (this.filters.sort === "totalCost") {
-        list.sort((a, b) => this.convertedCost(b) - this.convertedCost(a));
-      } else if (this.filters.sort === "quantity") {
-        list.sort((a, b) => b.quantity - a.quantity);
-      }
-      return list;
-    },
-    hasActiveFilters() {
-      return (
-        this.filters.query.trim().length > 0 ||
-        this.filters.category !== "all" ||
-        this.filters.sort !== "recent" ||
-        this.filters.tag.trim().length > 0 ||
-        this.filters.risk !== "all"
-      );
+      return [...this.portfolio];
     },
   },
   methods: {
@@ -944,11 +485,6 @@ createApp({
       if (value === "etf" || value === "ETF") return "etf";
       return value;
     },
-    riskLabel(level) {
-      const safeLevel = level || "medium";
-      const key = `risk${safeLevel.charAt(0).toUpperCase()}${safeLevel.slice(1)}`;
-      return this.t(key);
-    },
     currency(value) {
       const formatter = new Intl.NumberFormat(this.locale, {
         style: "currency",
@@ -956,46 +492,6 @@ createApp({
         maximumFractionDigits: 2,
       });
       return formatter.format(Number(value) || 0);
-    },
-    rateToUsd(code) {
-      return this.currencyRates[code] || defaultRates[code] || 1;
-    },
-    convertAmount(amount, fromCode, toCode) {
-      const fromRate = this.rateToUsd(fromCode);
-      const toRate = this.rateToUsd(toCode);
-      if (!fromRate || !toRate) return amount;
-      const amountUsd = amount * fromRate;
-      return amountUsd / toRate;
-    },
-    convertedCost(asset) {
-      return this.convertAmount(asset.totalCost, asset.currency || "USD", this.displayCurrency);
-    },
-    convertedMarketValue(asset) {
-      const unitPrice = asset.currentPrice ?? asset.totalCost / asset.quantity;
-      const value = unitPrice * asset.quantity;
-      return this.convertAmount(value, asset.currency || "USD", this.displayCurrency);
-    },
-    assetReturnRate(asset) {
-      const cost = this.convertedCost(asset);
-      const value = this.convertedMarketValue(asset);
-      if (!cost) return 0;
-      return (value - cost) / cost;
-    },
-    assetPerformanceClass(asset) {
-      const rate = this.assetReturnRate(asset);
-      if (rate > 0.01) return "positive";
-      if (rate < -0.01) return "negative";
-      return "neutral";
-    },
-    parseTags(value) {
-      if (!value) return [];
-      const tags = value
-        .split(/[,\|]/)
-        .map((tag) => tag.trim())
-        .filter(Boolean);
-      return Array.from(new Set(tags.map((tag) => tag.toLowerCase()))).map(
-        (tagLower) => tags.find((tag) => tag.toLowerCase() === tagLower) || tagLower
-      );
     },
     clearAssetError(field) {
       if (this.assetErrors[field]) {
@@ -1063,8 +559,6 @@ createApp({
     async loadPortfolio() {
       if (!this.token) return;
       this.portfolio = await this.apiFetch("/api/portfolio");
-      this.recordValueSnapshot();
-      this.renderValueChart();
     },
     async saveAsset() {
       const errors = {
@@ -1100,7 +594,7 @@ createApp({
           riskLevel: this.assetForm.riskLevel,
           strategy: this.assetForm.strategy.trim() || null,
           sentiment: this.assetForm.sentiment.trim() || null,
-          tags: this.parseTags(this.assetForm.tags),
+          tags: Array.isArray(this.assetForm.tags) ? this.assetForm.tags : [],
           note: this.assetForm.note.trim() || null,
         };
         const saved = await this.apiFetch(
@@ -1116,9 +610,6 @@ createApp({
         } else {
           this.portfolio.unshift(saved);
         }
-        this.addEvent(wasEditing ? "eventUpdated" : "eventAdded", saved);
-        this.recordValueSnapshot();
-        this.renderValueChart();
         this.resetAssetForm();
         this.setNotice(this.t(wasEditing ? "assetUpdated" : "assetSaved"), "success");
       } catch (error) {
@@ -1133,12 +624,12 @@ createApp({
         category: "stock",
         quantity: 1,
         cost: 0,
-        currency: "USD",
+        currency: this.locale.startsWith("zh") ? "CNY" : "USD",
         currentPrice: null,
         riskLevel: "medium",
         strategy: "",
         sentiment: "",
-        tags: "",
+        tags: [],
         note: "",
       };
       this.assetErrors = {
@@ -1155,12 +646,12 @@ createApp({
         category: this.normalizedCategory(asset.category),
         quantity: asset.quantity,
         cost: asset.totalCost,
-        currency: asset.currency || "USD",
+        currency: asset.currency || (this.locale.startsWith("zh") ? "CNY" : "USD"),
         currentPrice: asset.currentPrice ?? null,
         riskLevel: asset.riskLevel || "medium",
         strategy: asset.strategy || "",
         sentiment: asset.sentiment || "",
-        tags: (asset.tags || []).join(", "),
+        tags: asset.tags || [],
         note: asset.note || "",
       };
       this.assetErrors = {
@@ -1177,13 +668,7 @@ createApp({
       this.isLoading.deletingId = id;
       try {
         await this.apiFetch(`/api/portfolio/${id}`, { method: "DELETE" });
-        const removed = this.portfolio.find((asset) => asset.id === id);
         this.portfolio = this.portfolio.filter((asset) => asset.id !== id);
-        if (removed) {
-          this.addEvent("eventDeleted", removed);
-        }
-        this.recordValueSnapshot();
-        this.renderValueChart();
         this.setNotice(this.t("assetDeleted"), "success");
       } catch (error) {
         this.setNotice(error.message || this.t("deleteFailed"), "error");
@@ -1207,14 +692,6 @@ createApp({
       localStorage.removeItem("pm_email");
       this.portfolio = [];
       this.resetAssetForm();
-      if (this.chart) {
-        this.chart.destroy();
-        this.chart = null;
-      }
-      if (this.valueChart) {
-        this.valueChart.destroy();
-        this.valueChart = null;
-      }
       if (!hasError) {
         this.setNotice(this.t("logoutSuccess"), "info");
       }
@@ -1222,250 +699,6 @@ createApp({
     setNotice(message, type = "info") {
       this.notice.message = message;
       this.notice.type = type;
-    },
-    generateChartColors(count) {
-      if (!count) return [];
-      return Array.from({ length: count }, (_, index) => {
-        const hue = Math.round((360 / count) * index);
-        return `hsl(${hue} 80% 65%)`;
-      });
-    },
-    renderChart() {
-      const ctx = document.getElementById("portfolioChart");
-      if (!ctx) return;
-      const dataSource = this.visiblePortfolio;
-      const labels = dataSource.map((item) => item.name);
-      const values = dataSource.map((item) => this.convertedCost(item));
-      const colors = this.generateChartColors(values.length);
-
-      if (this.chart) {
-        this.chart.data.labels = labels;
-        this.chart.data.datasets[0].data = values;
-        this.chart.data.datasets[0].backgroundColor = colors;
-        this.chart.update();
-        return;
-      }
-
-      if (!values.length) {
-        return;
-      }
-
-      this.chart = new Chart(ctx, {
-        type: "doughnut",
-        data: {
-          labels,
-          datasets: [
-            {
-              data: values,
-              backgroundColor: colors,
-              borderWidth: 0,
-            },
-          ],
-        },
-        options: {
-          plugins: {
-            legend: {
-              position: "bottom",
-              labels: {
-                color: "#f5f7ff",
-              },
-            },
-          },
-          cutout: "65%",
-        },
-      });
-    },
-    renderValueChart() {
-      const ctx = document.getElementById("valueChart");
-      if (!ctx) return;
-      const labels = this.valueHistory.map((entry) =>
-        new Date(entry.timestamp).toLocaleDateString(this.locale, { month: "short", day: "numeric" })
-      );
-      const values = this.valueHistory.map((entry) => entry.value);
-      if (this.valueChart) {
-        this.valueChart.data.labels = labels;
-        this.valueChart.data.datasets[0].data = values;
-        this.valueChart.update();
-        return;
-      }
-      if (!values.length) return;
-      this.valueChart = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels,
-          datasets: [
-            {
-              data: values,
-              fill: true,
-              borderColor: "#5cf0ff",
-              backgroundColor: "rgba(92, 240, 255, 0.15)",
-              tension: 0.35,
-              pointRadius: 2,
-            },
-          ],
-        },
-        options: {
-          plugins: {
-            legend: { display: false },
-          },
-          scales: {
-            x: { ticks: { color: "#b1b7d1" } },
-            y: { ticks: { color: "#b1b7d1" } },
-          },
-        },
-      });
-    },
-    recordValueSnapshot() {
-      const totalValue = this.portfolio.reduce(
-        (sum, asset) => sum + this.convertedMarketValue(asset),
-        0
-      );
-      const now = Date.now();
-      const last = this.valueHistory[this.valueHistory.length - 1];
-      if (last && now - last.timestamp < 1000 * 60 * 60 * 2) {
-        return;
-      }
-      this.valueHistory.push({ id: `${now}`, timestamp: now, value: totalValue });
-      if (this.valueHistory.length > 30) {
-        this.valueHistory.shift();
-      }
-    },
-    addEvent(key, asset) {
-      const now = Date.now();
-      this.events.unshift({
-        id: `${now}-${Math.random().toString(16).slice(2, 6)}`,
-        timestamp: now,
-        title: this.t(key),
-        detail: `${asset.name} · ${this.currency(this.convertedCost(asset))}`,
-      });
-      if (this.events.length > 40) {
-        this.events.pop();
-      }
-    },
-    handleImportFile(event) {
-      const file = event.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const rows = this.parseCsv(String(reader.result || ""));
-          for (const row of rows) {
-            const payload = {
-              name: row.name,
-              category: row.category || "stock",
-              quantity: Number(row.quantity || 0),
-              cost: Number(row.cost || 0),
-              currency: row.currency || "USD",
-              currentPrice: row.currentPrice ? Number(row.currentPrice) : null,
-              riskLevel: row.riskLevel || "medium",
-              strategy: row.strategy || null,
-              sentiment: row.sentiment || null,
-              tags: this.parseTags(row.tags || ""),
-              note: row.note || null,
-            };
-            await this.apiFetch("/api/portfolio", {
-              method: "POST",
-              body: JSON.stringify(payload),
-            });
-          }
-          await this.loadPortfolio();
-          this.addEvent("eventImported", { name: this.t("importTitle"), totalCost: 0, currency: "USD" });
-          this.setNotice(this.t("importSuccess"), "success");
-        } catch (error) {
-          this.setNotice(error.message || this.t("importFailed"), "error");
-        } finally {
-          if (this.$refs.importFile) {
-            this.$refs.importFile.value = "";
-          }
-        }
-      };
-      reader.readAsText(file);
-    },
-    parseCsv(raw) {
-      const lines = raw.split(/\r?\n/).filter(Boolean);
-      if (!lines.length) return [];
-      const headers = lines[0].split(",").map((header) => header.trim());
-      return lines.slice(1).map((line) => {
-        const values = [];
-        let current = "";
-        let inQuotes = false;
-        for (let i = 0; i < line.length; i += 1) {
-          const char = line[i];
-          if (char === "\"") {
-            inQuotes = !inQuotes;
-          } else if (char === "," && !inQuotes) {
-            values.push(current);
-            current = "";
-          } else {
-            current += char;
-          }
-        }
-        values.push(current);
-        return headers.reduce((acc, header, index) => {
-          acc[header] = values[index]?.replace(/^\"|\"$/g, "").trim() || "";
-          return acc;
-        }, {});
-      });
-    },
-    exportCsv() {
-      if (!this.portfolio.length) return;
-      const headers = [
-        "name",
-        "category",
-        "quantity",
-        "cost",
-        "currency",
-        "currentPrice",
-        "riskLevel",
-        "strategy",
-        "sentiment",
-        "tags",
-        "note",
-      ];
-      const rows = this.portfolio.map((asset) => [
-        asset.name,
-        asset.category,
-        asset.quantity,
-        asset.totalCost,
-        asset.currency,
-        asset.currentPrice ?? "",
-        asset.riskLevel,
-        asset.strategy ?? "",
-        asset.sentiment ?? "",
-        (asset.tags || []).join("|"),
-        asset.note ?? "",
-      ]);
-      const csv = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = this.t("exportFileName");
-      link.click();
-      URL.revokeObjectURL(link.href);
-    },
-    clearFilters() {
-      this.filters = {
-        query: "",
-        category: "all",
-        sort: "recent",
-        tag: "",
-        risk: "all",
-      };
-    },
-    applyQuickFilter(filter) {
-      if (filter.type === "category") {
-        this.filters.category = filter.value;
-      }
-      if (filter.type === "risk") {
-        this.filters.risk = filter.value;
-      }
-    },
-    clearQuickFilters() {
-      this.filters.category = "all";
-      this.filters.risk = "all";
-    },
-    applyTagFilter(tag) {
-      this.filters.tag = tag;
     },
     async init() {
       if (!this.token) return;
@@ -1478,99 +711,10 @@ createApp({
         this.logout();
       }
     },
-    savePreset() {
-      const name = this.newPresetName.trim();
-      if (!name) return;
-      const preset = {
-        id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
-        name,
-        filters: { ...this.filters },
-      };
-      this.presets.unshift(preset);
-      this.newPresetName = "";
-    },
-    applyPreset(preset) {
-      this.filters = { ...defaultFilters, ...preset.filters };
-    },
-    removePreset(presetId) {
-      this.presets = this.presets.filter((preset) => preset.id !== presetId);
-    },
   },
   mounted() {
     this.updateDocumentLang();
     this.updateDocumentMeta();
     this.init();
-    watch(
-      () => [
-        this.portfolio,
-        this.filters.query,
-        this.filters.category,
-        this.filters.risk,
-        this.filters.sort,
-        this.displayCurrency,
-        this.currencyRates,
-      ],
-      () => this.$nextTick(() => this.renderChart()),
-      { deep: true }
-    );
-    watch(
-      () => [this.portfolio, this.displayCurrency, this.currencyRates],
-      () => this.$nextTick(() => this.renderValueChart()),
-      { deep: true }
-    );
-    watch(
-      () => this.filters,
-      (filters) => {
-        localStorage.setItem("pm_filters", JSON.stringify(filters));
-      },
-      { deep: true }
-    );
-    watch(
-      () => this.allocationTargets,
-      (targets) => {
-        localStorage.setItem("pm_targets", JSON.stringify(targets));
-      },
-      { deep: true }
-    );
-    watch(
-      () => this.presets,
-      (presets) => {
-        localStorage.setItem("pm_view_presets", JSON.stringify(presets));
-      },
-      { deep: true }
-    );
-    watch(
-      () => this.displayCurrency,
-      (currency) => {
-        localStorage.setItem("pm_display_currency", currency);
-      }
-    );
-    watch(
-      () => this.currencyRates,
-      (rates) => {
-        localStorage.setItem("pm_currency_rates", JSON.stringify(rates));
-      },
-      { deep: true }
-    );
-    watch(
-      () => this.monthlyBudget,
-      (budget) => {
-        localStorage.setItem("pm_budget", String(budget || 0));
-      }
-    );
-    watch(
-      () => this.valueHistory,
-      (history) => {
-        localStorage.setItem("pm_value_history", JSON.stringify(history));
-      },
-      { deep: true }
-    );
-    watch(
-      () => this.events,
-      (events) => {
-        localStorage.setItem("pm_events", JSON.stringify(events));
-      },
-      { deep: true }
-    );
   },
 }).mount("#app");
