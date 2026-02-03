@@ -54,6 +54,32 @@ body {
   gap: 12px;
 }
 
+.notice {
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  font-size: 14px;
+}
+
+.notice.success {
+  background: rgba(0, 214, 143, 0.15);
+  border-color: rgba(0, 214, 143, 0.35);
+  color: #79f2c9;
+}
+
+.notice.error {
+  background: rgba(255, 107, 107, 0.15);
+  border-color: rgba(255, 107, 107, 0.35);
+  color: #ffb3b3;
+}
+
+.notice.info {
+  background: rgba(124, 92, 255, 0.15);
+  border-color: rgba(124, 92, 255, 0.35);
+  color: #c9c4ff;
+}
+
 .brand {
   display: flex;
   gap: 16px;
@@ -156,6 +182,14 @@ select {
   border: none;
   cursor: pointer;
   font-weight: 600;
+}
+
+.primary-btn:disabled,
+.secondary-btn:disabled,
+.delete-btn:disabled,
+.ghost-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .primary-btn {
