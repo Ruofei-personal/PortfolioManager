@@ -317,6 +317,173 @@ select {
   overflow: hidden;
 }
 
+.insights-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.insight-card {
+  background: rgba(8, 12, 24, 0.6);
+  border-radius: 18px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: grid;
+  gap: 12px;
+}
+
+.insight-card h3 {
+  font-size: 16px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.health-list {
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+
+.health-item {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  display: grid;
+  gap: 6px;
+}
+
+.health-item.good {
+  border: 1px solid rgba(92, 240, 255, 0.25);
+}
+
+.health-item.warn {
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+.health-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-right: 8px;
+}
+
+.health-value {
+  font-weight: 600;
+}
+
+.health-detail {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.target-table {
+  display: grid;
+  gap: 10px;
+}
+
+.target-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.target-info {
+  display: grid;
+  gap: 4px;
+}
+
+.target-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.target-input input {
+  width: 70px;
+  text-align: right;
+}
+
+.target-delta {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(124, 92, 255, 0.2);
+  color: #c9c4ff;
+  text-align: center;
+}
+
+.target-delta.over {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ffb3b3;
+}
+
+.target-delta.under {
+  background: rgba(92, 240, 255, 0.2);
+  color: var(--accent);
+}
+
+.target-footer {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.target-footer.warning {
+  color: #ffb3b3;
+}
+
+.preset-controls {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.preset-list {
+  display: grid;
+  gap: 8px;
+}
+
+.preset-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preset-chip .ghost-btn {
+  flex: 1;
+  justify-content: space-between;
+}
+
+.icon-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: var(--muted);
+  padding: 6px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.badge-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.achievement-title {
+  margin-top: 8px;
+}
+
 .table-actions {
   display: flex;
   flex-wrap: wrap;
@@ -475,5 +642,14 @@ select {
 
   .table-actions {
     align-items: stretch;
+  }
+
+  .target-row {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
+  .preset-controls {
+    grid-template-columns: 1fr;
   }
 }

@@ -26,6 +26,37 @@ const loadStoredFilters = () => {
   }
 };
 
+const defaultTargets = {
+  stock: 60,
+  crypto: 20,
+  etf: 20,
+};
+
+const loadStoredTargets = () => {
+  try {
+    const stored = JSON.parse(localStorage.getItem("pm_targets") || "null");
+    if (!stored || typeof stored !== "object") return { ...defaultTargets };
+    const next = { ...defaultTargets, ...stored };
+    Object.keys(defaultTargets).forEach((key) => {
+      const value = Number(next[key]);
+      next[key] = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : defaultTargets[key];
+    });
+    return next;
+  } catch (error) {
+    return { ...defaultTargets };
+  }
+};
+
+const loadStoredPresets = () => {
+  try {
+    const stored = JSON.parse(localStorage.getItem("pm_view_presets") || "null");
+    if (!Array.isArray(stored)) return [];
+    return stored.filter((preset) => preset && typeof preset.name === "string" && preset.filters);
+  } catch (error) {
+    return [];
+  }
+};
+
 createApp({
   data() {
     return {
@@ -49,8 +80,8 @@ createApp({
           visualTitle: "酷炫数据可视化",
           visualSubtitle: "使用饼图快速洞察资产占比，了解平均成本、数量与总投入。",
           visualFeatureOne: "实时更新持仓",
-          visualFeatureTwo: "自动计算平均成本",
-          visualFeatureThree: "多资产占比展示",
+          visualFeatureTwo: "健康体检提示风险",
+          visualFeatureThree: "目标仓位追踪与快捷视图",
           overviewTitle: "资产概览",
           greeting: "Hi, {email}",
           statAssets: "资产数",
@@ -107,6 +138,33 @@ createApp({
           assetNameError: "请输入资产名称",
           quantityError: "数量需大于 0",
           costError: "买入总价需大于或等于 0",
+          insightsTitle: "趣味洞察中心",
+          insightsSubtitle: "快速发现组合亮点与调整空间。",
+          healthTitle: "组合体检",
+          healthDiversification: "分散度",
+          healthTopHolding: "最大持仓",
+          healthCategoryMix: "资产覆盖",
+          healthTipBalanced: "结构均衡",
+          healthTipFocus: "集中度偏高",
+          healthTipExpand: "尝试增加品类",
+          targetTitle: "目标仓位追踪",
+          targetSubtitle: "设置目标比例，自动提醒偏离幅度。",
+          currentLabel: "当前",
+          targetTotal: "目标合计 {total}%",
+          targetDeltaOver: "超配 {value}%",
+          targetDeltaUnder: "低配 {value}%",
+          targetDeltaMatch: "已接近目标",
+          presetTitle: "快捷视图",
+          presetPlaceholder: "保存当前筛选为视图名称",
+          presetSave: "保存视图",
+          presetEmpty: "还没有保存视图",
+          achievementTitle: "成就墙",
+          achievementFirst: "首次建仓",
+          achievementDiversified: "多元配置",
+          achievementBalanced: "结构平衡",
+          achievementNoteTaker: "勤记备注",
+          achievementCollector: "组合扩张",
+          achievementEmpty: "完成一次操作即可解锁成就",
         },
         "en-US": {
           brandTitle: "Portfolio Manager",
@@ -126,8 +184,8 @@ createApp({
           visualTitle: "Beautiful data visualization",
           visualSubtitle: "Use the donut chart to see allocation, average cost, quantity, and total invested.",
           visualFeatureOne: "Real-time holdings updates",
-          visualFeatureTwo: "Automatic average cost",
-          visualFeatureThree: "Multi-asset allocation view",
+          visualFeatureTwo: "Portfolio health signals",
+          visualFeatureThree: "Target tracking & quick views",
           overviewTitle: "Portfolio overview",
           greeting: "Hi, {email}",
           statAssets: "Assets",
@@ -184,6 +242,33 @@ createApp({
           assetNameError: "Please enter an asset name",
           quantityError: "Quantity must be greater than 0",
           costError: "Total cost must be at least 0",
+          insightsTitle: "Fun Insights Hub",
+          insightsSubtitle: "Spot wins and gaps in your portfolio.",
+          healthTitle: "Health check",
+          healthDiversification: "Diversification",
+          healthTopHolding: "Top holding",
+          healthCategoryMix: "Category coverage",
+          healthTipBalanced: "Balanced mix",
+          healthTipFocus: "High concentration",
+          healthTipExpand: "Add more categories",
+          targetTitle: "Target allocation",
+          targetSubtitle: "Set targets and monitor drift.",
+          currentLabel: "Current",
+          targetTotal: "Targets total {total}%",
+          targetDeltaOver: "Over by {value}%",
+          targetDeltaUnder: "Under by {value}%",
+          targetDeltaMatch: "On target",
+          presetTitle: "Quick views",
+          presetPlaceholder: "Save current filters as a view",
+          presetSave: "Save view",
+          presetEmpty: "No saved views yet",
+          achievementTitle: "Achievements",
+          achievementFirst: "First holding",
+          achievementDiversified: "Diversified",
+          achievementBalanced: "Balanced mix",
+          achievementNoteTaker: "Notes champ",
+          achievementCollector: "Growing stash",
+          achievementEmpty: "Make a move to unlock achievements",
         },
       },
       loginForm: {
@@ -213,6 +298,9 @@ createApp({
       ],
       filters: loadStoredFilters(),
       portfolio: [],
+      allocationTargets: loadStoredTargets(),
+      presets: loadStoredPresets(),
+      newPresetName: "",
       token: localStorage.getItem("pm_token") || "",
       userEmail: localStorage.getItem("pm_email") || "",
       chart: null,
@@ -260,6 +348,103 @@ createApp({
         totalCost: this.currency(total || 0),
         averageCost: this.currency(totalQty ? total / totalQty : 0),
       };
+    },
+    allocationBreakdown() {
+      const totals = this.visiblePortfolio.reduce(
+        (acc, asset) => {
+          const key = this.normalizedCategory(asset.category);
+          if (!acc[key]) acc[key] = 0;
+          acc[key] += asset.totalCost;
+          return acc;
+        },
+        { stock: 0, crypto: 0, etf: 0 }
+      );
+      const total = Object.values(totals).reduce((sum, value) => sum + value, 0);
+      return this.categories.map((category) => {
+        const value = totals[category.value] || 0;
+        const percent = total ? Math.round((value / total) * 100) : 0;
+        const target = Number(this.allocationTargets[category.value]) || 0;
+        const delta = percent - target;
+        const deltaStatus = delta > 2 ? "over" : delta < -2 ? "under" : "match";
+        let deltaLabel = this.t("targetDeltaMatch");
+        if (deltaStatus === "over") {
+          deltaLabel = this.t("targetDeltaOver", { value: Math.abs(delta) });
+        } else if (deltaStatus === "under") {
+          deltaLabel = this.t("targetDeltaUnder", { value: Math.abs(delta) });
+        }
+        return {
+          key: category.value,
+          label: this.t(category.labelKey),
+          percent,
+          target,
+          deltaStatus,
+          deltaLabel,
+        };
+      });
+    },
+    targetTotal() {
+      return Object.values(this.allocationTargets).reduce((sum, value) => sum + Number(value || 0), 0);
+    },
+    healthChecks() {
+      const total = this.visiblePortfolio.reduce((sum, item) => sum + item.totalCost, 0);
+      const categories = new Set(this.visiblePortfolio.map((asset) => this.normalizedCategory(asset.category)));
+      const topHolding = this.visiblePortfolio.reduce(
+        (max, item) => Math.max(max, total ? item.totalCost / total : 0),
+        0
+      );
+      const diversificationScore = categories.size;
+      const diversificationStatus = diversificationScore >= 2 ? "good" : "warn";
+      const topHoldingStatus = topHolding > 0.5 ? "warn" : "good";
+      const categoryStatus = categories.size >= 3 ? "good" : "warn";
+      return [
+        {
+          label: this.t("healthDiversification"),
+          value: `${diversificationScore}/3`,
+          status: diversificationStatus,
+          detail:
+            diversificationStatus === "good" ? this.t("healthTipBalanced") : this.t("healthTipExpand"),
+        },
+        {
+          label: this.t("healthTopHolding"),
+          value: `${Math.round(topHolding * 100) || 0}%`,
+          status: topHoldingStatus,
+          detail: topHoldingStatus === "good" ? this.t("healthTipBalanced") : this.t("healthTipFocus"),
+        },
+        {
+          label: this.t("healthCategoryMix"),
+          value: categories.size ? `${Array.from(categories).length} ${this.t("category")}` : "0",
+          status: categoryStatus,
+          detail: categoryStatus === "good" ? this.t("healthTipBalanced") : this.t("healthTipExpand"),
+        },
+      ];
+    },
+    achievements() {
+      const achievements = [];
+      if (this.portfolio.length > 0) {
+        achievements.push(this.t("achievementFirst"));
+      }
+      const categories = new Set(this.portfolio.map((asset) => this.normalizedCategory(asset.category)));
+      if (categories.size >= 2) {
+        achievements.push(this.t("achievementDiversified"));
+      }
+      const total = this.portfolio.reduce((sum, item) => sum + item.totalCost, 0);
+      const topHolding = this.portfolio.reduce(
+        (max, item) => Math.max(max, total ? item.totalCost / total : 0),
+        0
+      );
+      if (total && topHolding <= 0.5) {
+        achievements.push(this.t("achievementBalanced"));
+      }
+      if (this.portfolio.some((asset) => asset.note && asset.note.trim().length > 0)) {
+        achievements.push(this.t("achievementNoteTaker"));
+      }
+      if (this.portfolio.length >= 5) {
+        achievements.push(this.t("achievementCollector"));
+      }
+      return achievements;
+    },
+    canSavePreset() {
+      return this.newPresetName.trim().length > 0;
     },
     visiblePortfolio() {
       let list = [...this.portfolio];
@@ -589,6 +774,23 @@ createApp({
         this.logout();
       }
     },
+    savePreset() {
+      const name = this.newPresetName.trim();
+      if (!name) return;
+      const preset = {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+        name,
+        filters: { ...this.filters },
+      };
+      this.presets.unshift(preset);
+      this.newPresetName = "";
+    },
+    applyPreset(preset) {
+      this.filters = { ...preset.filters };
+    },
+    removePreset(presetId) {
+      this.presets = this.presets.filter((preset) => preset.id !== presetId);
+    },
   },
   mounted() {
     this.updateDocumentLang();
@@ -602,6 +804,20 @@ createApp({
       () => this.filters,
       (filters) => {
         localStorage.setItem("pm_filters", JSON.stringify(filters));
+      },
+      { deep: true }
+    );
+    watch(
+      () => this.allocationTargets,
+      (targets) => {
+        localStorage.setItem("pm_targets", JSON.stringify(targets));
+      },
+      { deep: true }
+    );
+    watch(
+      () => this.presets,
+      (presets) => {
+        localStorage.setItem("pm_view_presets", JSON.stringify(presets));
       },
       { deep: true }
     );
