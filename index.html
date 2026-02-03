@@ -278,17 +278,20 @@
                   <span class="field-error" v-if="assetErrors.quantity">{{ assetErrors.quantity }}</span>
                 </label>
                 <label>
-                  {{ t("totalCostSimple") }}
+                  {{ t("unitPriceSimple") }}
                   <input
-                    v-model.number="assetForm.cost"
+                    v-model="assetForm.unitPrice"
                     type="number"
                     min="0"
                     step="0.01"
-                    @input="clearAssetError('cost')"
+                    @input="clearAssetError('unitPrice')"
                     required
                   />
-                  <span class="field-error" v-if="assetErrors.cost">{{ assetErrors.cost }}</span>
+                  <span class="field-error" v-if="assetErrors.unitPrice">{{ assetErrors.unitPrice }}</span>
                 </label>
+                <p class="form-computed-total" v-if="assetForm.quantity && assetForm.unitPrice !== ''">
+                  {{ t("totalComputed") }}：{{ currency(computedTotal) }}
+                </p>
                 <div class="form-actions">
                   <button type="submit" class="primary-btn" :disabled="isLoading.save">
                     {{ isLoading.save ? t("saving") : editingLabel }}

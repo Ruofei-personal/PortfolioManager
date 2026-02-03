@@ -49,8 +49,11 @@ createApp({
           assetNamePlaceholder: "Apple / AAPL",
           category: "分类",
           quantity: "数量",
+          unitPrice: "单价 ({currency})",
+          unitPriceSimple: "单价",
           totalCost: "买入总价 ({currency})",
           totalCostSimple: "买入总价",
+          totalComputed: "总价（自动）",
           saveAsset: "保存持仓",
           updateAsset: "更新持仓",
           cancelEdit: "取消编辑",
@@ -115,6 +118,7 @@ createApp({
           deleting: "删除中...",
           assetNameError: "请输入资产名称",
           quantityError: "数量需大于 0",
+          unitPriceError: "单价需大于或等于 0",
           costError: "买入总价需大于或等于 0",
           insightsTitle: "趣味洞察中心",
           insightsSubtitle: "快速发现组合亮点与调整空间。",
@@ -235,8 +239,11 @@ createApp({
           assetNamePlaceholder: "Apple / AAPL",
           category: "Category",
           quantity: "Quantity",
+          unitPrice: "Unit price ({currency})",
+          unitPriceSimple: "Unit price",
           totalCost: "Total cost ({currency})",
           totalCostSimple: "Total cost",
+          totalComputed: "Total (auto)",
           saveAsset: "Save holding",
           updateAsset: "Update holding",
           cancelEdit: "Cancel edit",
@@ -301,6 +308,7 @@ createApp({
           deleting: "Deleting...",
           assetNameError: "Please enter an asset name",
           quantityError: "Quantity must be greater than 0",
+          unitPriceError: "Unit price must be at least 0",
           costError: "Total cost must be at least 0",
           insightsTitle: "Fun Insights Hub",
           insightsSubtitle: "Spot wins and gaps in your portfolio.",
@@ -389,7 +397,7 @@ createApp({
         name: "",
         category: "stock",
         quantity: 1,
-        cost: 0,
+        unitPrice: "",
         currency: navigator.language.startsWith("zh") ? "CNY" : "USD",
         currentPrice: null,
         riskLevel: "medium",
@@ -401,7 +409,7 @@ createApp({
       assetErrors: {
         name: "",
         quantity: "",
-        cost: "",
+        unitPrice: "",
       },
       categories: [
         { value: "stock", labelKey: "categoryStock" },
@@ -452,6 +460,12 @@ createApp({
     },
     visiblePortfolio() {
       return [...this.portfolio];
+    },
+    computedTotal() {
+      const qty = Number(this.assetForm.quantity);
+      const up = Number(this.assetForm.unitPrice);
+      if (!qty || (this.assetForm.unitPrice !== "" && (isNaN(up) || up < 0))) return 0;
+      return (qty * (this.assetForm.unitPrice === "" ? 0 : up)) || 0;
     },
   },
   methods: {
@@ -577,7 +591,7 @@ createApp({
       const errors = {
         name: "",
         quantity: "",
-        cost: "",
+        unitPrice: "",
       };
       if (!this.assetForm.name.trim()) {
         errors.name = this.t("assetNameError");
@@ -585,11 +599,12 @@ createApp({
       if (this.assetForm.quantity <= 0) {
         errors.quantity = this.t("quantityError");
       }
-      if (this.assetForm.cost < 0) {
-        errors.cost = this.t("costError");
+      const unitPrice = Number(this.assetForm.unitPrice);
+      if (unitPrice < 0 || (this.assetForm.unitPrice !== "" && isNaN(unitPrice))) {
+        errors.unitPrice = this.t("unitPriceError");
       }
       this.assetErrors = errors;
-      if (errors.name || errors.quantity || errors.cost) {
+      if (errors.name || errors.quantity || errors.unitPrice) {
         this.setNotice(this.t("invalidAsset"), "error");
         return;
       }
@@ -597,11 +612,13 @@ createApp({
       this.isLoading.save = true;
       try {
         const wasEditing = this.isEditing;
+        const qty = Number(this.assetForm.quantity);
+        const unitPrice = Number(this.assetForm.unitPrice) || 0;
         const payload = {
           name: this.assetForm.name,
           category: this.assetForm.category,
-          quantity: Number(this.assetForm.quantity),
-          cost: Number(this.assetForm.cost),
+          quantity: qty,
+          cost: qty * unitPrice,
           currency: this.assetForm.currency,
           currentPrice: this.assetForm.currentPrice ? Number(this.assetForm.currentPrice) : null,
           riskLevel: this.assetForm.riskLevel,
@@ -637,7 +654,7 @@ createApp({
         name: "",
         category: "stock",
         quantity: 1,
-        cost: 0,
+        unitPrice: "",
         currency: this.locale.startsWith("zh") ? "CNY" : "USD",
         currentPrice: null,
         riskLevel: "medium",
@@ -649,17 +666,18 @@ createApp({
       this.assetErrors = {
         name: "",
         quantity: "",
-        cost: "",
+        unitPrice: "",
       };
       this.editingId = null;
     },
     startEdit(asset) {
       this.editingId = asset.id;
+      const qty = asset.quantity || 1;
       this.assetForm = {
         name: asset.name,
         category: this.normalizedCategory(asset.category),
         quantity: asset.quantity,
-        cost: asset.totalCost,
+        unitPrice: qty ? (asset.totalCost / qty).toString() : "",
         currency: asset.currency || (this.locale.startsWith("zh") ? "CNY" : "USD"),
         currentPrice: asset.currentPrice ?? null,
         riskLevel: asset.riskLevel || "medium",
@@ -671,7 +689,7 @@ createApp({
       this.assetErrors = {
         name: "",
         quantity: "",
-        cost: "",
+        unitPrice: "",
       };
       this.isAssetModalOpen = true;
     },

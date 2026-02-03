@@ -327,6 +327,12 @@ select {
   gap: 14px;
 }
 
+.form-computed-total {
+  font-size: 14px;
+  color: var(--muted);
+  margin: -4px 0 0;
+}
+
 .form-actions {
   display: flex;
   flex-wrap: wrap;
