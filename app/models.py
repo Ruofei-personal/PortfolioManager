@@ -32,6 +32,7 @@ class Holding(Base):
     category: Mapped[str] = mapped_column(String, nullable=False, default="股票")
     quantity: Mapped[float] = mapped_column(Float, nullable=False)
     total_cost: Mapped[float] = mapped_column(Float, nullable=False)
+    tags: Mapped[str | None] = mapped_column(String, nullable=True)
     note: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

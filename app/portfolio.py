@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 from app.auth import now_utc, require_user
 from app.db import get_db
 from app.models import Holding, User
-from app.portfolio_utils import normalize_portfolio_payload
+from app.portfolio_utils import decode_tags, encode_tags, normalize_portfolio_payload
 from app.schemas import HoldingResponse, PortfolioPayload
 
 router = APIRouter()
@@ -24,6 +24,7 @@ def list_portfolio(user: User = Depends(require_user), db=Depends(get_db)):
             category=holding.category,
             quantity=holding.quantity,
             totalCost=holding.total_cost,
+            tags=decode_tags(holding.tags),
             note=holding.note,
         )
         for holding in holdings
@@ -32,7 +33,7 @@ def list_portfolio(user: User = Depends(require_user), db=Depends(get_db)):
 
 @router.post("/api/portfolio", response_model=HoldingResponse)
 def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user), db=Depends(get_db)):
-    name, category, note = normalize_portfolio_payload(payload)
+    name, category, note, tags = normalize_portfolio_payload(payload)
 
     holding = db.execute(
         select(Holding).where(
@@ -45,6 +46,11 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
         holding.quantity += payload.quantity
         holding.total_cost += payload.cost
         holding.category = category
+        if tags:
+            merged_tags = {tag.lower(): tag for tag in decode_tags(holding.tags)}
+            for tag in tags:
+                merged_tags[tag.lower()] = tag
+            holding.tags = encode_tags(list(merged_tags.values()))
         holding.note = note
         holding.updated_at = now
         db.commit()
@@ -54,6 +60,7 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
             category=holding.category,
             quantity=holding.quantity,
             totalCost=holding.total_cost,
+            tags=decode_tags(holding.tags),
             note=holding.note,
         )
 
@@ -63,6 +70,7 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
         category=category,
         quantity=payload.quantity,
         total_cost=payload.cost,
+        tags=encode_tags(tags),
         note=note,
         created_at=now,
         updated_at=now,
@@ -76,6 +84,7 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
         category=holding.category,
         quantity=holding.quantity,
         totalCost=holding.total_cost,
+        tags=decode_tags(holding.tags),
         note=holding.note,
     )
 
@@ -84,7 +93,7 @@ def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user),
 def update_portfolio(
     holding_id: int, payload: PortfolioPayload, user: User = Depends(require_user), db=Depends(get_db)
 ):
-    next_name, category, note = normalize_portfolio_payload(payload)
+    next_name, category, note, tags = normalize_portfolio_payload(payload)
 
     holding = db.execute(
         select(Holding).where(Holding.id == holding_id, Holding.user_id == user.id)
@@ -109,6 +118,7 @@ def update_portfolio(
     holding.category = category
     holding.quantity = payload.quantity
     holding.total_cost = payload.cost
+    holding.tags = encode_tags(tags)
     holding.note = note
     holding.updated_at = now_utc()
     db.commit()
@@ -118,6 +128,7 @@ def update_portfolio(
         category=holding.category,
         quantity=holding.quantity,
         totalCost=holding.total_cost,
+        tags=decode_tags(holding.tags),
         note=holding.note,
     )
 
