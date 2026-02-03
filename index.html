@@ -221,7 +221,36 @@
               <h2>{{ t("tableTitle") }}</h2>
               <p>{{ t("tableSubtitle") }}</p>
             </div>
-            <table class="table" v-if="portfolio.length" aria-label="Holdings">
+            <div class="table-actions">
+              <div class="table-filters">
+                <label class="filter-field">
+                  <span class="filter-label">{{ t("searchPlaceholder") }}</span>
+                  <input v-model.trim="filters.query" type="search" :placeholder="t('searchPlaceholder')" />
+                </label>
+                <label class="filter-field">
+                  <span class="filter-label">{{ t("category") }}</span>
+                  <select v-model="filters.category">
+                    <option value="all">{{ t("filterAll") }}</option>
+                    <option v-for="option in categories" :key="option.value" :value="option.value">
+                      {{ t(option.labelKey) }}
+                    </option>
+                  </select>
+                </label>
+                <label class="filter-field">
+                  <span class="filter-label">{{ t("filterSort") }}</span>
+                  <select v-model="filters.sort">
+                    <option value="recent">{{ t("sortRecent") }}</option>
+                    <option value="name">{{ t("sortName") }}</option>
+                    <option value="totalCost">{{ t("sortTotalCost") }}</option>
+                    <option value="quantity">{{ t("sortQuantity") }}</option>
+                  </select>
+                </label>
+              </div>
+              <button class="ghost-btn" type="button" @click="clearFilters" :disabled="!hasActiveFilters">
+                {{ t("clearFilters") }}
+              </button>
+            </div>
+            <table class="table" v-if="visiblePortfolio.length" aria-label="Holdings">
               <thead>
                 <tr>
                   <th scope="col">{{ t("assetName") }}</th>
@@ -233,7 +262,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr class="asset-row" v-for="asset in portfolio" :key="asset.id">
+                <tr class="asset-row" v-for="asset in visiblePortfolio" :key="asset.id">
                   <td>
                     <div class="asset-name">{{ asset.name }}</div>
                     <div class="asset-tags">
@@ -271,7 +300,9 @@
                 </tr>
               </tbody>
             </table>
-            <div class="empty-state" v-else role="status">{{ t("emptyState") }}</div>
+            <div class="empty-state" v-else role="status">
+              {{ hasActiveFilters ? t("emptyStateFiltered") : t("emptyState") }}
+            </div>
           </div>
         </section>
       </main>

@@ -40,10 +40,20 @@ createApp({
           saveAsset: "保存持仓",
           tableTitle: "持仓明细",
           tableSubtitle: "点击删除移除资产。",
+          searchPlaceholder: "搜索资产名称",
+          filterCategory: "全部分类",
+          filterAll: "全部",
+          filterSort: "排序",
+          sortRecent: "最近更新",
+          sortName: "名称",
+          sortTotalCost: "总投入",
+          sortQuantity: "数量",
+          clearFilters: "清除筛选",
           avgCostLabel: "平均成本 {value}",
           costPerShare: "成本/股",
           delete: "删除",
           emptyState: "暂无资产，先添加一笔持仓吧。",
+          emptyStateFiltered: "没有匹配的资产，请调整筛选条件。",
           categoryStock: "股票",
           categoryCrypto: "虚拟币",
           loginFailed: "登录失败",
@@ -99,10 +109,20 @@ createApp({
           saveAsset: "Save holding",
           tableTitle: "Holdings",
           tableSubtitle: "Click delete to remove assets.",
+          searchPlaceholder: "Search by asset name",
+          filterCategory: "All categories",
+          filterAll: "All",
+          filterSort: "Sort",
+          sortRecent: "Most recent",
+          sortName: "Name",
+          sortTotalCost: "Total invested",
+          sortQuantity: "Quantity",
+          clearFilters: "Clear filters",
           avgCostLabel: "Avg cost {value}",
           costPerShare: "Cost/share",
           delete: "Delete",
           emptyState: "No assets yet. Add your first holding.",
+          emptyStateFiltered: "No matching holdings. Update your filters to see results.",
           categoryStock: "Stocks",
           categoryCrypto: "Crypto",
           loginFailed: "Login failed",
@@ -147,6 +167,11 @@ createApp({
         { value: "stock", labelKey: "categoryStock" },
         { value: "crypto", labelKey: "categoryCrypto" },
       ],
+      filters: {
+        query: "",
+        category: "all",
+        sort: "recent",
+      },
       portfolio: [],
       token: localStorage.getItem("pm_token") || "",
       userEmail: localStorage.getItem("pm_email") || "",
@@ -181,13 +206,40 @@ createApp({
       return parts.find((part) => part.type === "currency")?.value || this.currencyCode;
     },
     stats() {
-      const total = this.portfolio.reduce((sum, item) => sum + item.totalCost, 0);
-      const totalQty = this.portfolio.reduce((sum, item) => sum + item.quantity, 0);
+      const total = this.visiblePortfolio.reduce((sum, item) => sum + item.totalCost, 0);
+      const totalQty = this.visiblePortfolio.reduce((sum, item) => sum + item.quantity, 0);
       return {
-        assetCount: this.portfolio.length,
+        assetCount: this.visiblePortfolio.length,
         totalCost: this.currency(total || 0),
         averageCost: this.currency(totalQty ? total / totalQty : 0),
       };
+    },
+    visiblePortfolio() {
+      let list = [...this.portfolio];
+      const query = this.filters.query.trim().toLowerCase();
+      if (query) {
+        list = list.filter((asset) => asset.name.toLowerCase().includes(query));
+      }
+      if (this.filters.category !== "all") {
+        list = list.filter(
+          (asset) => this.normalizedCategory(asset.category) === this.filters.category
+        );
+      }
+      if (this.filters.sort === "name") {
+        list.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (this.filters.sort === "totalCost") {
+        list.sort((a, b) => b.totalCost - a.totalCost);
+      } else if (this.filters.sort === "quantity") {
+        list.sort((a, b) => b.quantity - a.quantity);
+      }
+      return list;
+    },
+    hasActiveFilters() {
+      return (
+        this.filters.query.trim().length > 0 ||
+        this.filters.category !== "all" ||
+        this.filters.sort !== "recent"
+      );
     },
   },
   methods: {
@@ -210,6 +262,11 @@ createApp({
     categoryLabel(value) {
       if (value === "stock" || value === "股票") return this.t("categoryStock");
       if (value === "crypto" || value === "虚拟币") return this.t("categoryCrypto");
+      return value;
+    },
+    normalizedCategory(value) {
+      if (value === "stock" || value === "股票") return "stock";
+      if (value === "crypto" || value === "虚拟币") return "crypto";
       return value;
     },
     currency(value) {
@@ -390,14 +447,20 @@ createApp({
     renderChart() {
       const ctx = document.getElementById("portfolioChart");
       if (!ctx) return;
-      const labels = this.portfolio.map((item) => item.name);
-      const values = this.portfolio.map((item) => item.totalCost);
+      const dataSource = this.visiblePortfolio;
+      const labels = dataSource.map((item) => item.name);
+      const values = dataSource.map((item) => item.totalCost);
       const colors = this.generateChartColors(values.length);
 
       if (this.chart) {
         this.chart.data.labels = labels;
         this.chart.data.datasets[0].data = values;
+        this.chart.data.datasets[0].backgroundColor = colors;
         this.chart.update();
+        return;
+      }
+
+      if (!values.length) {
         return;
       }
 
@@ -426,6 +489,13 @@ createApp({
         },
       });
     },
+    clearFilters() {
+      this.filters = {
+        query: "",
+        category: "all",
+        sort: "recent",
+      };
+    },
     async init() {
       if (!this.token) return;
       try {
@@ -442,7 +512,7 @@ createApp({
     this.updateDocumentLang();
     this.init();
     watch(
-      () => this.portfolio,
+      () => [this.portfolio, this.filters.query, this.filters.category, this.filters.sort],
       () => this.$nextTick(() => this.renderChart()),
       { deep: true }
     );
