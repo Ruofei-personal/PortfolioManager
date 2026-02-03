@@ -137,9 +137,20 @@
         <section class="dashboard" v-else>
           <div class="dashboard-grid">
             <div class="panel">
-              <div class="panel-header">
-                <h2>{{ t("overviewTitle") }}</h2>
-                <p>{{ t("greeting", { email: userEmail }) }}</p>
+              <div class="panel-header panel-header-row">
+                <div>
+                  <h2>{{ t("overviewTitle") }}</h2>
+                  <p>{{ t("greeting", { email: userEmail }) }}</p>
+                </div>
+                <div class="panel-actions">
+                  <label class="select-inline">
+                    <span>{{ t("chartMetric") }}</span>
+                    <select v-model="chartMetric">
+                      <option value="cost">{{ t("chartMetricCost") }}</option>
+                      <option value="market">{{ t("chartMetricMarket") }}</option>
+                    </select>
+                  </label>
+                </div>
               </div>
               <div class="chart-wrapper">
                 <canvas id="portfolioChart" height="280"></canvas>
@@ -154,8 +165,16 @@
                   <strong>{{ stats.totalCost }}</strong>
                 </div>
                 <div>
+                  <span>{{ t("statMarketValue") }}</span>
+                  <strong>{{ stats.marketValue }}</strong>
+                </div>
+                <div>
                   <span>{{ t("statAverageCost") }}</span>
                   <strong>{{ stats.averageCost }}</strong>
+                </div>
+                <div>
+                  <span>{{ t("statUnrealized") }}</span>
+                  <strong :class="stats.unrealizedClass">{{ stats.unrealizedGain }}</strong>
                 </div>
               </div>
             </div>
@@ -209,6 +228,37 @@
                   />
                   <span class="field-error" v-if="assetErrors.cost">{{ assetErrors.cost }}</span>
                 </label>
+                <label>
+                  {{ t("currentPrice", { currency: currencySymbol }) }}
+                  <input
+                    v-model.number="assetForm.currentPrice"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    @input="clearAssetError('currentPrice')"
+                  />
+                  <span class="field-error" v-if="assetErrors.currentPrice">
+                    {{ assetErrors.currentPrice }}
+                  </span>
+                </label>
+                <div class="form-split">
+                  <label>
+                    {{ t("currency") }}
+                    <select v-model="assetForm.currency">
+                      <option v-for="option in currencies" :key="option" :value="option">
+                        {{ option }}
+                      </option>
+                    </select>
+                  </label>
+                  <label>
+                    {{ t("tags") }}
+                    <input
+                      v-model="assetForm.tags"
+                      type="text"
+                      :placeholder="t('tagsPlaceholder')"
+                    />
+                  </label>
+                </div>
                 <label>
                   {{ t("assetNote") }}
                   <textarea
@@ -265,9 +315,24 @@
                   </select>
                 </label>
               </div>
-              <button class="ghost-btn" type="button" @click="clearFilters" :disabled="!hasActiveFilters">
-                {{ t("clearFilters") }}
-              </button>
+              <div class="table-action-buttons">
+                <button class="ghost-btn" type="button" @click="applyQuickSort('totalCost')">
+                  {{ t("quickSortTotal") }}
+                </button>
+                <button class="ghost-btn" type="button" @click="applyQuickSort('quantity')">
+                  {{ t("quickSortQuantity") }}
+                </button>
+                <button class="ghost-btn" type="button" @click="clearFilters" :disabled="!hasActiveFilters">
+                  {{ t("clearFilters") }}
+                </button>
+                <label class="ghost-btn file-btn">
+                  {{ t("importCsv") }}
+                  <input type="file" accept=".csv" @change="importCsv" />
+                </label>
+                <button class="ghost-btn" type="button" @click="exportCsv" :disabled="!portfolio.length">
+                  {{ t("exportCsv") }}
+                </button>
+              </div>
             </div>
             <table class="table" v-if="visiblePortfolio.length" aria-label="Holdings">
               <thead>
@@ -275,6 +340,8 @@
                   <th scope="col">{{ t("assetName") }}</th>
                   <th scope="col">{{ t("quantity") }}</th>
                   <th scope="col">{{ t("statTotalCost") }}</th>
+                  <th scope="col">{{ t("statMarketValue") }}</th>
+                  <th scope="col">{{ t("statUnrealized") }}</th>
                   <th scope="col">{{ t("costPerShare") }}</th>
                   <th scope="col">{{ t("category") }}</th>
                   <th scope="col">{{ t("actions") }}</th>
@@ -287,10 +354,13 @@
                     <div class="asset-tags">
                       <span class="badge">{{ t("category") }} {{ categoryLabel(asset.category) }}</span>
                       <span class="badge badge-muted">
-                        {{ t("avgCostLabel", { value: currency(asset.totalCost / asset.quantity) }) }}
+                        {{ t("avgCostLabel", { value: currency(asset.totalCost / asset.quantity, asset.currency) }) }}
                       </span>
                     </div>
                     <div class="asset-note" v-if="asset.note">{{ asset.note }}</div>
+                    <div class="asset-tags-list" v-if="asset.tags">
+                      <span v-for="tag in splitTags(asset.tags)" :key="tag" class="tag-pill">{{ tag }}</span>
+                    </div>
                   </td>
                   <td>
                     <span class="cell-label">{{ t("quantity") }}</span>
@@ -298,11 +368,23 @@
                   </td>
                   <td>
                     <span class="cell-label">{{ t("statTotalCost") }}</span>
-                    <span class="cell-value">{{ currency(asset.totalCost) }}</span>
+                    <span class="cell-value">{{ currency(asset.totalCost, asset.currency) }}</span>
+                  </td>
+                  <td>
+                    <span class="cell-label">{{ t("statMarketValue") }}</span>
+                    <span class="cell-value">{{ currency(marketValue(asset), asset.currency) }}</span>
+                  </td>
+                  <td>
+                    <span class="cell-label">{{ t("statUnrealized") }}</span>
+                    <span class="cell-value" :class="gainClass(asset)">
+                      {{ currency(unrealizedGain(asset), asset.currency) }}
+                    </span>
                   </td>
                   <td>
                     <span class="cell-label">{{ t("costPerShare") }}</span>
-                    <span class="cell-value">{{ currency(asset.totalCost / asset.quantity) }}</span>
+                    <span class="cell-value">
+                      {{ currency(asset.totalCost / asset.quantity, asset.currency) }}
+                    </span>
                   </td>
                   <td>
                     <span class="cell-label">{{ t("category") }}</span>
@@ -327,6 +409,32 @@
             </table>
             <div class="empty-state" v-else role="status">
               {{ hasActiveFilters ? t("emptyStateFiltered") : t("emptyState") }}
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h2>{{ t("transactionsTitle") }}</h2>
+              <p>{{ t("transactionsSubtitle") }}</p>
+            </div>
+            <div class="transactions" v-if="transactions.length">
+              <div class="transaction" v-for="tx in transactions" :key="tx.id">
+                <div>
+                  <strong>{{ tx.holdingName }}</strong>
+                  <span class="transaction-meta">
+                    {{ t("transactionAction", { action: t(tx.action) }) }} ·
+                    {{ categoryLabel(tx.category) }}
+                  </span>
+                </div>
+                <div class="transaction-values">
+                  <span>{{ tx.quantity }}</span>
+                  <span>{{ currency(tx.totalCost) }}</span>
+                  <span>{{ formatDate(tx.createdAt) }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="empty-state" v-else>
+              {{ t("transactionsEmpty") }}
             </div>
           </div>
         </section>

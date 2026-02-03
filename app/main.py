@@ -5,7 +5,14 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import auth, portfolio
-from app.db import engine, ensure_holdings_category, ensure_holdings_note
+from app.db import (
+    engine,
+    ensure_holdings_category,
+    ensure_holdings_current_price,
+    ensure_holdings_currency,
+    ensure_holdings_note,
+    ensure_holdings_tags,
+)
 from app.models import Base
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -15,6 +22,9 @@ app = FastAPI(title="Portfolio Manager API")
 Base.metadata.create_all(engine)
 ensure_holdings_category()
 ensure_holdings_note()
+ensure_holdings_currency()
+ensure_holdings_current_price()
+ensure_holdings_tags()
 
 app.mount("/static", StaticFiles(directory=BASE_DIR), name="static")
 app.include_router(auth.router)

@@ -263,6 +263,9 @@ select {
 
 .panel-header {
   margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .panel-header h2 {
@@ -273,6 +276,32 @@ select {
 .panel-header p {
   color: var(--muted);
   font-size: 14px;
+}
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.panel-header-row {
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.panel-header-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.select-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .chart-wrapper {
@@ -302,6 +331,12 @@ select {
   gap: 14px;
 }
 
+.form-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
 .form-actions {
   display: flex;
   flex-wrap: wrap;
@@ -324,6 +359,25 @@ select {
   align-items: flex-end;
   justify-content: space-between;
   margin-bottom: 16px;
+}
+
+.table-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.file-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.file-btn input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .table-filters {
@@ -409,6 +463,21 @@ select {
   color: var(--muted);
 }
 
+.asset-tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.tag-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  color: var(--text);
+}
+
 .badge-muted {
   background: rgba(124, 92, 255, 0.2);
   color: #c9c4ff;
@@ -434,6 +503,43 @@ select {
   padding: 24px;
   text-align: center;
   color: var(--muted);
+}
+
+.transactions {
+  display: grid;
+  gap: 12px;
+}
+
+.transaction {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(8, 12, 24, 0.7);
+}
+
+.transaction-meta {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.transaction-values {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.positive {
+  color: #79f2c9;
+}
+
+.negative {
+  color: #ffb3b3;
 }
 
 @media (max-width: 720px) {

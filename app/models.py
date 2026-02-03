@@ -32,11 +32,27 @@ class Holding(Base):
     category: Mapped[str] = mapped_column(String, nullable=False, default="股票")
     quantity: Mapped[float] = mapped_column(Float, nullable=False)
     total_cost: Mapped[float] = mapped_column(Float, nullable=False)
+    current_price: Mapped[float | None] = mapped_column(Float, nullable=True)
+    currency: Mapped[str] = mapped_column(String, nullable=False, default="CNY")
     note: Mapped[str | None] = mapped_column(String, nullable=True)
+    tags: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     user: Mapped["User"] = relationship("User", back_populates="holdings")
+
+
+class Transaction(Base):
+    __tablename__ = "transactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    holding_name: Mapped[str] = mapped_column(String, nullable=False)
+    category: Mapped[str] = mapped_column(String, nullable=False)
+    quantity: Mapped[float] = mapped_column(Float, nullable=False)
+    total_cost: Mapped[float] = mapped_column(Float, nullable=False)
+    action: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class Session(Base):
