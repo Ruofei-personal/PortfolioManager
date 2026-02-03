@@ -1,5 +1,31 @@
 const { createApp, computed, watch } = Vue;
 
+const defaultFilters = {
+  query: "",
+  category: "all",
+  sort: "recent",
+};
+
+const loadStoredFilters = () => {
+  try {
+    const stored = JSON.parse(localStorage.getItem("pm_filters") || "null");
+    if (!stored || typeof stored !== "object") return { ...defaultFilters };
+    const next = { ...defaultFilters, ...stored };
+    if (!["all", "stock", "crypto", "etf"].includes(next.category)) {
+      next.category = defaultFilters.category;
+    }
+    if (!["recent", "name", "totalCost", "quantity"].includes(next.sort)) {
+      next.sort = defaultFilters.sort;
+    }
+    if (typeof next.query !== "string") {
+      next.query = defaultFilters.query;
+    }
+    return next;
+  } catch (error) {
+    return { ...defaultFilters };
+  }
+};
+
 createApp({
   data() {
     return {
@@ -185,11 +211,7 @@ createApp({
         { value: "crypto", labelKey: "categoryCrypto" },
         { value: "etf", labelKey: "categoryEtf" },
       ],
-      filters: {
-        query: "",
-        category: "all",
-        sort: "recent",
-      },
+      filters: loadStoredFilters(),
       portfolio: [],
       token: localStorage.getItem("pm_token") || "",
       userEmail: localStorage.getItem("pm_email") || "",
@@ -574,6 +596,13 @@ createApp({
     watch(
       () => [this.portfolio, this.filters.query, this.filters.category, this.filters.sort],
       () => this.$nextTick(() => this.renderChart()),
+      { deep: true }
+    );
+    watch(
+      () => this.filters,
+      (filters) => {
+        localStorage.setItem("pm_filters", JSON.stringify(filters));
+      },
       { deep: true }
     );
   },
