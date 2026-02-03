@@ -137,8 +137,113 @@
           <div class="dashboard-grid">
             <div class="panel">
               <div class="panel-header">
-                <h2>{{ t("formTitle") }}</h2>
-                <p>{{ t("formSubtitle") }}</p>
+                <h2>{{ t("overviewTitle") }}</h2>
+                <p>{{ t("greeting", { email: userEmail }) }}</p>
+              </div>
+              <div class="stats">
+                <div>
+                  <span>{{ t("statAssets") }}</span>
+                  <strong>{{ stats.assetCount }}</strong>
+                </div>
+                <div>
+                  <span>{{ t("statTotalCost") }}</span>
+                  <strong>{{ stats.totalCost }}</strong>
+                </div>
+                <div>
+                  <span>{{ t("statAverageCost") }}</span>
+                  <strong>{{ stats.averageCost }}</strong>
+                </div>
+              </div>
+            </div>
+            <div class="panel actions-panel">
+              <div class="panel-header">
+                <h2>{{ t("actionsTitle") }}</h2>
+                <p>{{ t("actionsSubtitle") }}</p>
+              </div>
+              <div class="action-buttons">
+                <button class="primary-btn" type="button" @click="openAssetModal">
+                  {{ t("addHolding") }}
+                </button>
+                <button class="secondary-btn" type="button" @click="refreshPortfolio">
+                  {{ t("refreshHoldings") }}
+                </button>
+              </div>
+              <p class="muted">{{ t("actionsHint") }}</p>
+            </div>
+          </div>
+
+          <div class="panel table-panel" aria-live="polite">
+            <div class="panel-header panel-header-row">
+              <div>
+                <h2>{{ t("tableTitle") }}</h2>
+                <p>{{ t("tableSubtitle") }}</p>
+              </div>
+              <div class="panel-header-actions">
+                <button class="primary-btn" type="button" @click="openAssetModal">
+                  {{ t("addHolding") }}
+                </button>
+              </div>
+            </div>
+            <table class="table" v-if="visiblePortfolio.length" :aria-label="t('tableAriaHoldings')">
+              <thead>
+                <tr>
+                  <th scope="col">{{ t("assetName") }}</th>
+                  <th scope="col">{{ t("quantity") }}</th>
+                  <th scope="col">{{ t("statTotalCost") }}</th>
+                  <th scope="col">{{ t("actions") }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="asset-row" v-for="asset in visiblePortfolio" :key="asset.id">
+                  <td>
+                    <div class="asset-name">{{ asset.name }}</div>
+                    <div class="asset-note muted">{{ categoryLabel(asset.category) }}</div>
+                  </td>
+                  <td>
+                    <span class="cell-label">{{ t("quantity") }}</span>
+                    <span class="cell-value">{{ asset.quantity }}</span>
+                  </td>
+                  <td>
+                    <span class="cell-label">{{ t("statTotalCost") }}</span>
+                    <span class="cell-value">{{ currency(asset.totalCost) }}</span>
+                  </td>
+                  <td>
+                    <div class="table-actions-cell">
+                      <button class="ghost-btn" type="button" @click="startEdit(asset)">
+                        {{ t("edit") }}
+                      </button>
+                      <button
+                        class="delete-btn"
+                        @click="deleteAsset(asset.id)"
+                        :disabled="isLoading.deletingId === asset.id"
+                      >
+                        {{ isLoading.deletingId === asset.id ? t("deleting") : t("delete") }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="empty-state" v-else role="status">
+              {{ t("emptyState") }}
+            </div>
+          </div>
+
+          <div v-if="isAssetModalOpen" class="modal-overlay" @click.self="closeAssetModal">
+            <div
+              class="modal"
+              role="dialog"
+              aria-modal="true"
+              :aria-label="isEditing ? t('updateAsset') : t('formTitle')"
+            >
+              <div class="modal-header">
+                <div>
+                  <h2>{{ isEditing ? t("updateAsset") : t("formTitle") }}</h2>
+                  <p>{{ t("formSubtitle") }}</p>
+                </div>
+                <button class="ghost-btn" type="button" @click="closeAssetModal" aria-label="Close">
+                  ✕
+                </button>
               </div>
               <form class="asset-form" @submit.prevent="saveAsset">
                 <label>
@@ -189,86 +294,15 @@
                     {{ isLoading.save ? t("saving") : editingLabel }}
                   </button>
                   <button
-                    v-if="isEditing"
                     type="button"
                     class="secondary-btn"
                     @click="cancelEdit"
                     :disabled="isLoading.save"
                   >
-                    {{ t("cancelEdit") }}
+                    {{ isEditing ? t("cancelEdit") : t("closeModal") }}
                   </button>
                 </div>
               </form>
-            </div>
-            <div class="panel">
-              <div class="panel-header">
-                <h2>{{ t("overviewTitle") }}</h2>
-                <p>{{ t("greeting", { email: userEmail }) }}</p>
-              </div>
-              <div class="stats">
-                <div>
-                  <span>{{ t("statAssets") }}</span>
-                  <strong>{{ stats.assetCount }}</strong>
-                </div>
-                <div>
-                  <span>{{ t("statTotalCost") }}</span>
-                  <strong>{{ stats.totalCost }}</strong>
-                </div>
-                <div>
-                  <span>{{ t("statAverageCost") }}</span>
-                  <strong>{{ stats.averageCost }}</strong>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="panel table-panel" aria-live="polite">
-            <div class="panel-header">
-              <h2>{{ t("tableTitle") }}</h2>
-              <p>{{ t("tableSubtitle") }}</p>
-            </div>
-            <table class="table" v-if="visiblePortfolio.length" :aria-label="t('tableAriaHoldings')">
-              <thead>
-                <tr>
-                  <th scope="col">{{ t("assetName") }}</th>
-                  <th scope="col">{{ t("quantity") }}</th>
-                  <th scope="col">{{ t("statTotalCost") }}</th>
-                  <th scope="col">{{ t("actions") }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr class="asset-row" v-for="asset in visiblePortfolio" :key="asset.id">
-                  <td>
-                    <div class="asset-name">{{ asset.name }}</div>
-                    <div class="asset-note muted">{{ categoryLabel(asset.category) }}</div>
-                  </td>
-                  <td>
-                    <span class="cell-label">{{ t("quantity") }}</span>
-                    <span class="cell-value">{{ asset.quantity }}</span>
-                  </td>
-                  <td>
-                    <span class="cell-label">{{ t("statTotalCost") }}</span>
-                    <span class="cell-value">{{ currency(asset.totalCost) }}</span>
-                  </td>
-                  <td>
-                    <div class="table-actions-cell">
-                      <button class="ghost-btn" type="button" @click="startEdit(asset)">
-                        {{ t("edit") }}
-                      </button>
-                      <button
-                        class="delete-btn"
-                        @click="deleteAsset(asset.id)"
-                        :disabled="isLoading.deletingId === asset.id"
-                      >
-                        {{ isLoading.deletingId === asset.id ? t("deleting") : t("delete") }}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="empty-state" v-else role="status">
-              {{ t("emptyState") }}
             </div>
           </div>
         </section>
