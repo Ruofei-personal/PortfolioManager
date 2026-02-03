@@ -60,6 +60,10 @@ createApp({
           closeModal: "关闭",
           tableTitle: "持仓明细",
           tableSubtitle: "登录后只展示你的持仓。",
+          allocationTitle: "资产占比饼图",
+          allocationSubtitle: "用酷炫饼图看清每一笔持仓的投入占比。",
+          allocationEmpty: "暂无占比数据，先添加持仓吧。",
+          allocationAria: "持仓占比饼图",
           tableAriaHoldings: "持仓列表",
           actions: "操作",
           searchPlaceholder: "搜索资产名称",
@@ -250,6 +254,10 @@ createApp({
           closeModal: "Close",
           tableTitle: "Holdings",
           tableSubtitle: "Show only your holdings after login.",
+          allocationTitle: "Allocation Pie",
+          allocationSubtitle: "A sleek pie view of each holding’s cost share.",
+          allocationEmpty: "No allocation data yet. Add holdings to see the pie.",
+          allocationAria: "Holdings allocation pie chart",
           tableAriaHoldings: "Holdings table",
           actions: "Actions",
           searchPlaceholder: "Search by asset name",
@@ -416,6 +424,15 @@ createApp({
         { value: "crypto", labelKey: "categoryCrypto" },
         { value: "etf", labelKey: "categoryEtf" },
       ],
+      pieColors: [
+        "#5cf0ff",
+        "#7c5cff",
+        "#ff9f5c",
+        "#5cffb2",
+        "#ff5cd1",
+        "#5c8bff",
+        "#ffd65c",
+      ],
       portfolio: [],
       token: localStorage.getItem("pm_token") || "",
       userEmail: localStorage.getItem("pm_email") || "",
@@ -466,6 +483,38 @@ createApp({
       const up = Number(this.assetForm.unitPrice);
       if (!qty || (this.assetForm.unitPrice !== "" && (isNaN(up) || up < 0))) return 0;
       return (qty * (this.assetForm.unitPrice === "" ? 0 : up)) || 0;
+    },
+    allocationSlices() {
+      const total = this.visiblePortfolio.reduce((sum, item) => sum + (item.totalCost || 0), 0);
+      if (!total) return [];
+      let cursor = 0;
+      return this.visiblePortfolio
+        .filter((item) => item.totalCost > 0)
+        .map((item, index) => {
+          const value = item.totalCost || 0;
+          const percent = value / total;
+          const start = cursor;
+          const end = cursor + percent * 100;
+          cursor = end;
+          return {
+            id: item.id,
+            name: item.name,
+            value,
+            percent,
+            start,
+            end,
+            color: this.pieColors[index % this.pieColors.length],
+          };
+        });
+    },
+    pieGradient() {
+      if (!this.allocationSlices.length) {
+        return "conic-gradient(rgba(124, 92, 255, 0.25) 0% 100%)";
+      }
+      const stops = this.allocationSlices.map(
+        (slice) => `${slice.color} ${slice.start}% ${slice.end}%`
+      );
+      return `conic-gradient(${stops.join(", ")})`;
     },
   },
   methods: {
@@ -519,6 +568,10 @@ createApp({
         maximumFractionDigits: 2,
       });
       return formatter.format(Number(value) || 0);
+    },
+    formatPercent(value) {
+      const percent = Number.isFinite(value) ? value * 100 : 0;
+      return `${percent.toFixed(1)}%`;
     },
     clearAssetError(field) {
       if (this.assetErrors[field]) {

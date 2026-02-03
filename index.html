@@ -172,6 +172,40 @@
             </div>
           </div>
 
+          <div class="panel allocation-panel">
+            <div class="panel-header">
+              <h2>{{ t("allocationTitle") }}</h2>
+              <p>{{ t("allocationSubtitle") }}</p>
+            </div>
+            <div class="allocation-grid">
+              <div class="pie-wrapper">
+                <div
+                  class="pie-chart"
+                  :style="{ background: pieGradient }"
+                  role="img"
+                  :aria-label="t('allocationAria')"
+                >
+                  <div class="pie-center">
+                    <span>{{ t("statTotalCost") }}</span>
+                    <strong>{{ stats.totalCost }}</strong>
+                  </div>
+                </div>
+              </div>
+              <ul class="pie-legend" v-if="allocationSlices.length">
+                <li v-for="slice in allocationSlices" :key="slice.id">
+                  <span class="legend-swatch" :style="{ background: slice.color }"></span>
+                  <div>
+                    <div class="legend-title">{{ slice.name }}</div>
+                    <div class="legend-meta">
+                      {{ currency(slice.value) }} · {{ formatPercent(slice.percent) }}
+                    </div>
+                  </div>
+                </li>
+              </ul>
+              <div class="empty-state" v-else>{{ t("allocationEmpty") }}</div>
+            </div>
+          </div>
+
           <div class="panel table-panel" aria-live="polite">
             <div class="panel-header panel-header-row">
               <div>
