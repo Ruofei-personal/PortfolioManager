@@ -433,6 +433,7 @@ createApp({
         "#5c8bff",
         "#ffd65c",
       ],
+      activeSliceId: null,
       portfolio: [],
       token: localStorage.getItem("pm_token") || "",
       userEmail: localStorage.getItem("pm_email") || "",
@@ -486,12 +487,15 @@ createApp({
       const total = this.visiblePortfolio.reduce((sum, item) => sum + (item.totalCost || 0), 0);
       if (!total) return [];
       let cursor = 0;
-      return this.visiblePortfolio
+      const filtered = this.visiblePortfolio
         .filter((item) => item.totalCost > 0)
-        .map((item, index) => {
+      return filtered.map((item, index) => {
           const value = item.totalCost || 0;
           const percent = value / total;
           const start = cursor;
+          const angle = percent * 360;
+          const startAngle = cursor * 360;
+          const endAngle = index === filtered.length - 1 ? 360 : startAngle + angle;
           const end = cursor + percent * 100;
           cursor = end;
           return {
@@ -501,18 +505,12 @@ createApp({
             percent,
             start,
             end,
+            startAngle,
+            endAngle,
+            path: this.describeSlicePath(100, 100, 90, startAngle, endAngle),
             color: this.pieColors[index % this.pieColors.length],
           };
         });
-    },
-    pieGradient() {
-      if (!this.allocationSlices.length) {
-        return "conic-gradient(rgba(124, 92, 255, 0.25) 0% 100%)";
-      }
-      const stops = this.allocationSlices.map(
-        (slice) => `${slice.color} ${slice.start}% ${slice.end}%`
-      );
-      return `conic-gradient(${stops.join(", ")})`;
     },
   },
   methods: {
@@ -552,6 +550,65 @@ createApp({
       if (value === "crypto" || value === "虚拟币") return this.t("categoryCrypto");
       if (value === "etf" || value === "ETF") return this.t("categoryEtf");
       return value;
+    },
+    polarToCartesian(centerX, centerY, radius, angleInDegrees) {
+      const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
+      return {
+        x: centerX + radius * Math.cos(angleInRadians),
+        y: centerY + radius * Math.sin(angleInRadians),
+      };
+    },
+    describeArc(centerX, centerY, radius, startAngle, endAngle) {
+      const start = this.polarToCartesian(centerX, centerY, radius, endAngle);
+      const end = this.polarToCartesian(centerX, centerY, radius, startAngle);
+      const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+      return [
+        "M",
+        start.x,
+        start.y,
+        "A",
+        radius,
+        radius,
+        0,
+        largeArcFlag,
+        0,
+        end.x,
+        end.y,
+        "L",
+        centerX,
+        centerY,
+        "Z",
+      ].join(" ");
+    },
+    describeFullCircle(centerX, centerY, radius) {
+      return [
+        "M",
+        centerX,
+        centerY - radius,
+        "A",
+        radius,
+        radius,
+        0,
+        1,
+        1,
+        centerX,
+        centerY + radius,
+        "A",
+        radius,
+        radius,
+        0,
+        1,
+        1,
+        centerX,
+        centerY - radius,
+        "Z",
+      ].join(" ");
+    },
+    describeSlicePath(centerX, centerY, radius, startAngle, endAngle) {
+      if (endAngle - startAngle >= 360) {
+        return this.describeFullCircle(centerX, centerY, radius);
+      }
+      return this.describeArc(centerX, centerY, radius, startAngle, endAngle);
     },
     normalizedCategory(value) {
       if (value === "stock" || value === "股票") return "stock";

@@ -177,10 +177,24 @@
               <div class="pie-wrapper">
                 <div
                   class="pie-chart"
-                  :style="{ background: pieGradient }"
                   role="img"
                   :aria-label="t('allocationAria')"
                 >
+                  <svg class="pie-svg" viewBox="0 0 200 200" aria-hidden="true">
+                    <g v-if="allocationSlices.length">
+                      <path
+                        v-for="slice in allocationSlices"
+                        :key="slice.id"
+                        class="pie-slice"
+                        :class="{ 'is-active': activeSliceId === slice.id }"
+                        :d="slice.path"
+                        :fill="slice.color"
+                        @mouseenter="activeSliceId = slice.id"
+                        @mouseleave="activeSliceId = null"
+                      ></path>
+                    </g>
+                    <circle v-else class="pie-slice pie-slice--empty" cx="100" cy="100" r="90" />
+                  </svg>
                   <div class="pie-center">
                     <span>{{ t("statTotalCost") }}</span>
                     <strong>{{ stats.totalCost }}</strong>
