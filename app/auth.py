@@ -35,6 +35,13 @@ def now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def as_utc(dt: datetime) -> datetime:
+    """Normalize to UTC-aware for comparison. SQLite returns naive datetimes."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 def normalize_email(email: str) -> str:
     return email.strip().lower()
 
@@ -45,7 +52,9 @@ def extract_token(request: Request) -> str:
 
 
 def cleanup_expired_sessions(db) -> None:
-    expired_sessions = db.execute(select(Session).where(Session.expires_at < now_utc())).scalars().all()
+    now = now_utc()
+    all_sessions = db.execute(select(Session)).scalars().all()
+    expired_sessions = [s for s in all_sessions if as_utc(s.expires_at) < now]
     for session_row in expired_sessions:
         db.delete(session_row)
     if expired_sessions:
@@ -66,7 +75,7 @@ def get_user_by_session(db, token: str) -> Optional[User]:
     session_row = db.execute(select(Session).where(Session.token == token)).scalar_one_or_none()
     if not session_row:
         return None
-    if session_row.expires_at < now_utc():
+    if as_utc(session_row.expires_at) < now_utc():
         db.delete(session_row)
         db.commit()
         return None
