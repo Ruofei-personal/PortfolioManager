@@ -198,7 +198,7 @@
                   <span class="field-error" v-if="assetErrors.quantity">{{ assetErrors.quantity }}</span>
                 </label>
                 <label>
-                  {{ t("totalCost", { currency: currencySymbol }) }}
+                  {{ t("totalCost", { currency: assetForm.currency }) }}
                   <input
                     v-model.number="assetForm.cost"
                     type="number"
@@ -208,6 +208,48 @@
                     required
                   />
                   <span class="field-error" v-if="assetErrors.cost">{{ assetErrors.cost }}</span>
+                </label>
+                <label>
+                  {{ t("assetCurrency") }}
+                  <select v-model="assetForm.currency" required>
+                    <option v-for="code in currencyOptions" :key="code" :value="code">
+                      {{ code }}
+                    </option>
+                  </select>
+                </label>
+                <label>
+                  {{ t("currentPrice") }}
+                  <input
+                    v-model.number="assetForm.currentPrice"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    :placeholder="t('currentPricePlaceholder')"
+                  />
+                </label>
+                <label>
+                  {{ t("riskLevel") }}
+                  <select v-model="assetForm.riskLevel" required>
+                    <option value="low">{{ t("riskLow") }}</option>
+                    <option value="medium">{{ t("riskMedium") }}</option>
+                    <option value="high">{{ t("riskHigh") }}</option>
+                  </select>
+                </label>
+                <label>
+                  {{ t("strategy") }}
+                  <input
+                    v-model="assetForm.strategy"
+                    type="text"
+                    :placeholder="t('strategyPlaceholder')"
+                  />
+                </label>
+                <label>
+                  {{ t("sentiment") }}
+                  <input
+                    v-model="assetForm.sentiment"
+                    type="text"
+                    :placeholder="t('sentimentPlaceholder')"
+                  />
                 </label>
                 <label>
                   {{ t("assetTags") }}
@@ -240,6 +282,137 @@
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <div class="panel performance-panel">
+              <div class="panel-header">
+                <h2>{{ t("performanceTitle") }}</h2>
+                <p>{{ t("performanceSubtitle") }}</p>
+              </div>
+              <div class="chart-wrapper">
+                <canvas id="valueChart" height="220"></canvas>
+              </div>
+              <div class="stats stats-compact">
+                <div>
+                  <span>{{ t("marketValue") }}</span>
+                  <strong>{{ performanceStats.marketValue }}</strong>
+                </div>
+                <div>
+                  <span>{{ t("profitLoss") }}</span>
+                  <strong :class="performanceStats.profitClass">{{ performanceStats.profit }}</strong>
+                </div>
+                <div>
+                  <span>{{ t("returnRate") }}</span>
+                  <strong :class="performanceStats.profitClass">{{ performanceStats.returnRate }}</strong>
+                </div>
+              </div>
+              <p class="muted">{{ performanceStats.note }}</p>
+            </div>
+
+            <div class="panel budget-panel">
+              <div class="panel-header">
+                <h2>{{ t("budgetTitle") }}</h2>
+                <p>{{ t("budgetSubtitle") }}</p>
+              </div>
+              <label>
+                {{ t("budgetTarget", { currency: currencySymbol }) }}
+                <input v-model.number="monthlyBudget" type="number" min="0" step="0.01" />
+              </label>
+              <div class="progress">
+                <div class="progress-bar" :style="{ width: budgetProgress + '%' }"></div>
+              </div>
+              <div class="budget-stats">
+                <span>{{ t("budgetUsed", { value: budgetUsedLabel }) }}</span>
+                <span :class="{ warning: budgetProgress > 100 }">
+                  {{ t("budgetProgress", { value: budgetProgressLabel }) }}
+                </span>
+              </div>
+              <p class="muted" v-if="budgetProgress > 100">{{ t("budgetOver") }}</p>
+            </div>
+
+            <div class="panel currency-panel">
+              <div class="panel-header">
+                <h2>{{ t("currencyTitle") }}</h2>
+                <p>{{ t("currencySubtitle") }}</p>
+              </div>
+              <label>
+                {{ t("displayCurrency") }}
+                <select v-model="displayCurrency">
+                  <option v-for="code in currencyOptions" :key="code" :value="code">
+                    {{ code }}
+                  </option>
+                </select>
+              </label>
+              <div class="rate-grid">
+                <div class="rate-row" v-for="code in currencyOptions" :key="code">
+                  <span>{{ code }}</span>
+                  <input v-model.number="currencyRates[code]" type="number" min="0" step="0.0001" />
+                  <span class="muted">{{ t("rateHint") }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel import-panel">
+              <div class="panel-header">
+                <h2>{{ t("importTitle") }}</h2>
+                <p>{{ t("importSubtitle") }}</p>
+              </div>
+              <div class="import-actions">
+                <input ref="importFile" type="file" accept=".csv" @change="handleImportFile" />
+                <button class="secondary-btn" type="button" @click="exportCsv">
+                  {{ t("exportCsv") }}
+                </button>
+              </div>
+              <p class="muted">{{ t("importHint") }}</p>
+            </div>
+
+            <div class="panel timeline-panel">
+              <div class="panel-header">
+                <h2>{{ t("timelineTitle") }}</h2>
+                <p>{{ t("timelineSubtitle") }}</p>
+              </div>
+              <ul class="timeline-list" v-if="eventTimeline.length">
+                <li v-for="event in eventTimeline" :key="event.id">
+                  <span class="timeline-dot"></span>
+                  <div>
+                    <strong>{{ event.title }}</strong>
+                    <p class="muted">{{ event.detail }}</p>
+                    <span class="muted">{{ event.timeLabel }}</span>
+                  </div>
+                </li>
+              </ul>
+              <p class="muted" v-else>{{ t("timelineEmpty") }}</p>
+            </div>
+
+            <div class="panel risk-panel">
+              <div class="panel-header">
+                <h2>{{ t("riskTitle") }}</h2>
+                <p>{{ t("riskSubtitle") }}</p>
+              </div>
+              <div class="risk-score">
+                <strong>{{ riskScoreLabel }}</strong>
+                <span class="muted">{{ t("riskScoreHint") }}</span>
+              </div>
+              <div class="risk-grid">
+                <div class="risk-cell" v-for="item in riskBreakdown" :key="item.label">
+                  <span>{{ item.label }}</span>
+                  <strong>{{ item.percent }}%</strong>
+                  <div class="risk-bar">
+                    <div class="risk-fill" :style="{ width: item.percent + '%' }"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="strategy-list">
+                <h3>{{ t("strategyTitle") }}</h3>
+                <div v-if="strategyBreakdown.length" class="strategy-chips">
+                  <span class="badge badge-muted" v-for="item in strategyBreakdown" :key="item.label">
+                    {{ item.label }} · {{ item.count }}
+                  </span>
+                </div>
+                <p class="muted" v-else>{{ t("strategyEmpty") }}</p>
+              </div>
             </div>
           </div>
 
@@ -317,10 +490,16 @@
                 </div>
                 <p class="muted" v-else>{{ t("presetEmpty") }}</p>
                 <h3 class="achievement-title">{{ t("achievementTitle") }}</h3>
-                <div class="badge-list">
-                  <span class="badge" v-for="badge in achievements" :key="badge">{{ badge }}</span>
-                  <span class="muted" v-if="!achievements.length">{{ t("achievementEmpty") }}</span>
+                <div class="badge-list" v-if="achievementCards.length">
+                  <div class="badge-card" v-for="badge in achievementCards" :key="badge.label">
+                    <span class="badge-title">{{ badge.label }}</span>
+                    <span class="muted">{{ badge.subtitle }}</span>
+                    <div class="progress">
+                      <div class="progress-bar" :style="{ width: badge.progress + '%' }"></div>
+                    </div>
+                  </div>
                 </div>
+                <span class="muted" v-else>{{ t("achievementEmpty") }}</span>
               </div>
             </div>
           </div>
@@ -369,6 +548,7 @@
                   <th scope="col">{{ t("assetName") }}</th>
                   <th scope="col">{{ t("quantity") }}</th>
                   <th scope="col">{{ t("statTotalCost") }}</th>
+                  <th scope="col">{{ t("marketValue") }}</th>
                   <th scope="col">{{ t("costPerShare") }}</th>
                   <th scope="col">{{ t("category") }}</th>
                   <th scope="col">{{ t("actions") }}</th>
@@ -381,7 +561,7 @@
                     <div class="asset-tags">
                       <span class="badge">{{ t("category") }} {{ categoryLabel(asset.category) }}</span>
                       <span class="badge badge-muted">
-                        {{ t("avgCostLabel", { value: currency(asset.totalCost / asset.quantity) }) }}
+                        {{ t("avgCostLabel", { value: currency(convertedCost(asset) / asset.quantity) }) }}
                       </span>
                       <span class="badge badge-tag" v-for="tag in asset.tags" :key="tag">
                         #{{ tag }}
@@ -395,15 +575,23 @@
                   </td>
                   <td>
                     <span class="cell-label">{{ t("statTotalCost") }}</span>
-                    <span class="cell-value">{{ currency(asset.totalCost) }}</span>
+                    <span class="cell-value">{{ currency(convertedCost(asset)) }}</span>
+                    <span class="cell-meta">{{ asset.currency }}</span>
+                  </td>
+                  <td>
+                    <span class="cell-label">{{ t("marketValue") }}</span>
+                    <span class="cell-value">{{ currency(convertedMarketValue(asset)) }}</span>
                   </td>
                   <td>
                     <span class="cell-label">{{ t("costPerShare") }}</span>
-                    <span class="cell-value">{{ currency(asset.totalCost / asset.quantity) }}</span>
+                    <span class="cell-value">{{ currency(convertedCost(asset) / asset.quantity) }}</span>
                   </td>
                   <td>
                     <span class="cell-label">{{ t("category") }}</span>
                     <span class="cell-value">{{ categoryLabel(asset.category) }}</span>
+                    <div class="cell-meta">
+                      {{ t("riskLevel") }}: {{ riskLabel(asset.riskLevel) }}
+                    </div>
                   </td>
                   <td>
                     <div class="table-actions-cell">

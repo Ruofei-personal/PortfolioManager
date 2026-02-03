@@ -243,7 +243,7 @@ select {
 }
 
 .dashboard {
-  display: none;
+  display: flex;
   flex-direction: column;
   gap: 24px;
 }
@@ -681,4 +681,140 @@ select {
   .preset-controls {
     grid-template-columns: 1fr;
   }
+}
+
+.stats-compact strong.positive {
+  color: #7fffd4;
+}
+
+.stats-compact strong.negative {
+  color: #ffb3b3;
+}
+
+.progress {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  margin: 12px 0;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  border-radius: inherit;
+  width: 0;
+  transition: width 0.3s ease;
+}
+
+.budget-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.budget-stats .warning {
+  color: #ffb3b3;
+}
+
+.rate-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.rate-row {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.import-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timeline-list {
+  list-style: none;
+  display: grid;
+  gap: 14px;
+  position: relative;
+}
+
+.timeline-list li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+}
+
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-top: 6px;
+}
+
+.risk-score {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.risk-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.risk-cell {
+  background: rgba(255, 255, 255, 0.04);
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.risk-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.risk-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7c5cff, #ffb347);
+}
+
+.strategy-list {
+  margin-top: 16px;
+}
+
+.strategy-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.badge-card {
+  background: rgba(8, 12, 24, 0.6);
+  border-radius: 16px;
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.badge-title {
+  font-weight: 600;
+}
+
+.cell-meta {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
 }
