@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Portfolio Manager</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div class="ambient"></div>
+    <div class="app-shell" id="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-icon">◆</span>
+          <div>
+            <p class="brand-title">Portfolio Manager</p>
+            <p class="brand-subtitle">你的持仓，轻松掌控</p>
+          </div>
+        </div>
+        <button class="ghost-btn" @click="logout" v-if="isAuthed">退出登录</button>
+      </header>
+
+      <main>
+        <section class="auth" v-if="!isAuthed">
+          <div class="auth-card">
+            <h1>欢迎回来</h1>
+            <p>登录后管理你的投资组合。</p>
+            <form @submit.prevent="login">
+              <label>
+                邮箱
+                <input v-model="loginForm.email" type="email" placeholder="you@email.com" required />
+              </label>
+              <label>
+                密码
+                <input v-model="loginForm.password" type="password" placeholder="••••••••" required />
+              </label>
+              <button type="submit" class="primary-btn">登录</button>
+            </form>
+            <div class="divider">或</div>
+            <form @submit.prevent="register">
+              <label>
+                邮箱
+                <input v-model="registerForm.email" type="email" placeholder="you@email.com" required />
+              </label>
+              <label>
+                密码
+                <input
+                  v-model="registerForm.password"
+                  type="password"
+                  placeholder="至少 6 位"
+                  minlength="6"
+                  required
+                />
+              </label>
+              <button type="submit" class="secondary-btn">创建账号</button>
+            </form>
+            <p class="hint">数据将保存在服务器 SQLite（示例）。</p>
+          </div>
+          <div class="auth-visual">
+            <div class="glass-card">
+              <h2>酷炫数据可视化</h2>
+              <p>
+                使用饼图快速洞察资产占比，了解平均成本、数量与总投入。
+              </p>
+              <ul>
+                <li>实时更新持仓</li>
+                <li>自动计算平均成本</li>
+                <li>多资产占比展示</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="dashboard" v-else>
+          <div class="dashboard-grid">
+            <div class="panel">
+              <div class="panel-header">
+                <h2>资产概览</h2>
+                <p>Hi, {{ userEmail }}</p>
+              </div>
+              <div class="chart-wrapper">
+                <canvas id="portfolioChart" height="280"></canvas>
+              </div>
+              <div class="stats">
+                <div>
+                  <span>资产数</span>
+                  <strong>{{ stats.assetCount }}</strong>
+                </div>
+                <div>
+                  <span>总投入</span>
+                  <strong>{{ stats.totalCost }}</strong>
+                </div>
+                <div>
+                  <span>平均成本</span>
+                  <strong>{{ stats.averageCost }}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">
+                <h2>新增/加仓</h2>
+                <p>记录你的每一笔买入。</p>
+              </div>
+              <form class="asset-form" @submit.prevent="saveAsset">
+                <label>
+                  资产名称
+                  <input v-model="assetForm.name" type="text" placeholder="Apple / AAPL" required />
+                </label>
+                <label>
+                  数量
+                  <input v-model.number="assetForm.quantity" type="number" min="1" step="1" required />
+                </label>
+                <label>
+                  买入总价 (¥)
+                  <input v-model.number="assetForm.cost" type="number" min="0" step="0.01" required />
+                </label>
+                <button type="submit" class="primary-btn">保存持仓</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="panel table-panel">
+            <div class="panel-header">
+              <h2>持仓明细</h2>
+              <p>点击删除移除资产。</p>
+            </div>
+            <div class="table" v-if="portfolio.length">
+              <div class="asset-row" v-for="asset in portfolio" :key="asset.id">
+                <div>
+                  <div class="asset-name">{{ asset.name }}</div>
+                  <span class="badge">平均成本 {{ currency(asset.totalCost / asset.quantity) }}</span>
+                </div>
+                <div>
+                  <header>数量</header>
+                  <div>{{ asset.quantity }}</div>
+                </div>
+                <div>
+                  <header>总投入</header>
+                  <div>{{ currency(asset.totalCost) }}</div>
+                </div>
+                <div>
+                  <header>成本/股</header>
+                  <div>{{ currency(asset.totalCost / asset.quantity) }}</div>
+                </div>
+                <div>
+                  <button class="delete-btn" @click="deleteAsset(asset.id)">删除</button>
+                </div>
+              </div>
+            </div>
+            <div class="empty-state" v-else>暂无资产，先添加一笔持仓吧。</div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
