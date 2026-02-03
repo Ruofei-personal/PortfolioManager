@@ -172,8 +172,10 @@
                     v-model="assetForm.name"
                     type="text"
                     :placeholder="t('assetNamePlaceholder')"
+                    @input="clearAssetError('name')"
                     required
                   />
+                  <span class="field-error" v-if="assetErrors.name">{{ assetErrors.name }}</span>
                 </label>
                 <label>
                   {{ t("category") }}
@@ -185,11 +187,27 @@
                 </label>
                 <label>
                   {{ t("quantity") }}
-                  <input v-model.number="assetForm.quantity" type="number" min="1" step="1" required />
+                  <input
+                    v-model.number="assetForm.quantity"
+                    type="number"
+                    min="1"
+                    step="1"
+                    @input="clearAssetError('quantity')"
+                    required
+                  />
+                  <span class="field-error" v-if="assetErrors.quantity">{{ assetErrors.quantity }}</span>
                 </label>
                 <label>
-                  {{ t("totalCost") }}
-                  <input v-model.number="assetForm.cost" type="number" min="0" step="0.01" required />
+                  {{ t("totalCost", { currency: currencySymbol }) }}
+                  <input
+                    v-model.number="assetForm.cost"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    @input="clearAssetError('cost')"
+                    required
+                  />
+                  <span class="field-error" v-if="assetErrors.cost">{{ assetErrors.cost }}</span>
                 </label>
                 <button type="submit" class="primary-btn" :disabled="isLoading.save">
                   {{ isLoading.save ? t("saving") : t("saveAsset") }}
@@ -203,44 +221,56 @@
               <h2>{{ t("tableTitle") }}</h2>
               <p>{{ t("tableSubtitle") }}</p>
             </div>
-            <div class="table" v-if="portfolio.length" role="table" aria-label="Holdings">
-              <div class="asset-row" v-for="asset in portfolio" :key="asset.id">
-                <div>
-                  <div class="asset-name">{{ asset.name }}</div>
-                  <div class="asset-tags">
-                    <span class="badge">{{ t("category") }} {{ categoryLabel(asset.category) }}</span>
-                    <span class="badge badge-muted">
-                      {{ t("avgCostLabel", { value: currency(asset.totalCost / asset.quantity) }) }}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <header>{{ t("quantity") }}</header>
-                  <div>{{ asset.quantity }}</div>
-                </div>
-                <div>
-                  <header>{{ t("statTotalCost") }}</header>
-                  <div>{{ currency(asset.totalCost) }}</div>
-                </div>
-                <div>
-                  <header>{{ t("costPerShare") }}</header>
-                  <div>{{ currency(asset.totalCost / asset.quantity) }}</div>
-                </div>
-                <div>
-                  <header>{{ t("category") }}</header>
-                  <div>{{ categoryLabel(asset.category) }}</div>
-                </div>
-                <div>
-                  <button
-                    class="delete-btn"
-                    @click="deleteAsset(asset.id)"
-                    :disabled="isLoading.deletingId === asset.id"
-                  >
-                    {{ isLoading.deletingId === asset.id ? t("deleting") : t("delete") }}
-                  </button>
-                </div>
-              </div>
-            </div>
+            <table class="table" v-if="portfolio.length" aria-label="Holdings">
+              <thead>
+                <tr>
+                  <th scope="col">{{ t("assetName") }}</th>
+                  <th scope="col">{{ t("quantity") }}</th>
+                  <th scope="col">{{ t("statTotalCost") }}</th>
+                  <th scope="col">{{ t("costPerShare") }}</th>
+                  <th scope="col">{{ t("category") }}</th>
+                  <th scope="col">{{ t("delete") }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="asset-row" v-for="asset in portfolio" :key="asset.id">
+                  <td>
+                    <div class="asset-name">{{ asset.name }}</div>
+                    <div class="asset-tags">
+                      <span class="badge">{{ t("category") }} {{ categoryLabel(asset.category) }}</span>
+                      <span class="badge badge-muted">
+                        {{ t("avgCostLabel", { value: currency(asset.totalCost / asset.quantity) }) }}
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="cell-label">{{ t("quantity") }}</span>
+                    <span class="cell-value">{{ asset.quantity }}</span>
+                  </td>
+                  <td>
+                    <span class="cell-label">{{ t("statTotalCost") }}</span>
+                    <span class="cell-value">{{ currency(asset.totalCost) }}</span>
+                  </td>
+                  <td>
+                    <span class="cell-label">{{ t("costPerShare") }}</span>
+                    <span class="cell-value">{{ currency(asset.totalCost / asset.quantity) }}</span>
+                  </td>
+                  <td>
+                    <span class="cell-label">{{ t("category") }}</span>
+                    <span class="cell-value">{{ categoryLabel(asset.category) }}</span>
+                  </td>
+                  <td>
+                    <button
+                      class="delete-btn"
+                      @click="deleteAsset(asset.id)"
+                      :disabled="isLoading.deletingId === asset.id"
+                    >
+                      {{ isLoading.deletingId === asset.id ? t("deleting") : t("delete") }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
             <div class="empty-state" v-else role="status">{{ t("emptyState") }}</div>
           </div>
         </section>

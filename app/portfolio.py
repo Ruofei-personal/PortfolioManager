@@ -7,7 +7,12 @@ from app.models import Holding, User
 from app.schemas import HoldingResponse, PortfolioPayload
 
 router = APIRouter()
-ALLOWED_CATEGORIES = {"股票", "虚拟币"}
+CATEGORY_MAP = {
+    "股票": "股票",
+    "虚拟币": "虚拟币",
+    "stock": "股票",
+    "crypto": "虚拟币",
+}
 
 
 @router.get("/api/portfolio", response_model=list[HoldingResponse])
@@ -33,8 +38,9 @@ def list_portfolio(user: User = Depends(require_user), db=Depends(get_db)):
 def add_portfolio(payload: PortfolioPayload, user: User = Depends(require_user), db=Depends(get_db)):
     if payload.quantity <= 0 or payload.cost < 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid portfolio data.")
-    category = payload.category.strip()
-    if category not in ALLOWED_CATEGORIES:
+    raw_category = payload.category.strip()
+    category = CATEGORY_MAP.get(raw_category) or CATEGORY_MAP.get(raw_category.lower())
+    if not category:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category.")
 
     holding = db.execute(

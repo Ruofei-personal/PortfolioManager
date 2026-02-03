@@ -36,7 +36,7 @@ createApp({
           assetNamePlaceholder: "Apple / AAPL",
           category: "分类",
           quantity: "数量",
-          totalCost: "买入总价 (¥)",
+          totalCost: "买入总价 ({currency})",
           saveAsset: "保存持仓",
           tableTitle: "持仓明细",
           tableSubtitle: "点击删除移除资产。",
@@ -60,6 +60,9 @@ createApp({
           loading: "加载中...",
           saving: "保存中...",
           deleting: "删除中...",
+          assetNameError: "请输入资产名称",
+          quantityError: "数量需大于 0",
+          costError: "买入总价需大于或等于 0",
         },
         "en-US": {
           brandTitle: "Portfolio Manager",
@@ -92,7 +95,7 @@ createApp({
           assetNamePlaceholder: "Apple / AAPL",
           category: "Category",
           quantity: "Quantity",
-          totalCost: "Total cost (¥)",
+          totalCost: "Total cost ({currency})",
           saveAsset: "Save holding",
           tableTitle: "Holdings",
           tableSubtitle: "Click delete to remove assets.",
@@ -116,6 +119,9 @@ createApp({
           loading: "Loading...",
           saving: "Saving...",
           deleting: "Deleting...",
+          assetNameError: "Please enter an asset name",
+          quantityError: "Quantity must be greater than 0",
+          costError: "Total cost must be at least 0",
         },
       },
       loginForm: {
@@ -131,6 +137,11 @@ createApp({
         category: "stock",
         quantity: 1,
         cost: 0,
+      },
+      assetErrors: {
+        name: "",
+        quantity: "",
+        cost: "",
       },
       categories: [
         { value: "stock", labelKey: "categoryStock" },
@@ -158,6 +169,16 @@ createApp({
     },
     localeLabel() {
       return this.locale.startsWith("zh") ? "English" : "中文";
+    },
+    currencyCode() {
+      return this.locale.startsWith("zh") ? "CNY" : "USD";
+    },
+    currencySymbol() {
+      const parts = new Intl.NumberFormat(this.locale, {
+        style: "currency",
+        currency: this.currencyCode,
+      }).formatToParts(0);
+      return parts.find((part) => part.type === "currency")?.value || this.currencyCode;
     },
     stats() {
       const total = this.portfolio.reduce((sum, item) => sum + item.totalCost, 0);
@@ -194,10 +215,15 @@ createApp({
     currency(value) {
       const formatter = new Intl.NumberFormat(this.locale, {
         style: "currency",
-        currency: "CNY",
+        currency: this.currencyCode,
         maximumFractionDigits: 2,
       });
       return formatter.format(Number(value) || 0);
+    },
+    clearAssetError(field) {
+      if (this.assetErrors[field]) {
+        this.assetErrors[field] = "";
+      }
     },
     async apiFetch(url, options = {}) {
       const headers = {
@@ -262,14 +288,29 @@ createApp({
       this.portfolio = await this.apiFetch("/api/portfolio");
     },
     async saveAsset() {
-      if (!this.assetForm.name || this.assetForm.quantity <= 0 || this.assetForm.cost < 0) {
+      const errors = {
+        name: "",
+        quantity: "",
+        cost: "",
+      };
+      if (!this.assetForm.name.trim()) {
+        errors.name = this.t("assetNameError");
+      }
+      if (this.assetForm.quantity <= 0) {
+        errors.quantity = this.t("quantityError");
+      }
+      if (this.assetForm.cost < 0) {
+        errors.cost = this.t("costError");
+      }
+      this.assetErrors = errors;
+      if (errors.name || errors.quantity || errors.cost) {
         this.setNotice(this.t("invalidAsset"), "error");
         return;
       }
       if (this.isLoading.save) return;
       this.isLoading.save = true;
       try {
-        await this.apiFetch("/api/portfolio", {
+        const saved = await this.apiFetch("/api/portfolio", {
           method: "POST",
           body: JSON.stringify({
             name: this.assetForm.name,
@@ -282,7 +323,16 @@ createApp({
         this.assetForm.category = "stock";
         this.assetForm.quantity = 1;
         this.assetForm.cost = 0;
-        await this.loadPortfolio();
+        this.assetErrors = {
+          name: "",
+          quantity: "",
+          cost: "",
+        };
+        const existingIndex = this.portfolio.findIndex((asset) => asset.id === saved.id);
+        if (existingIndex >= 0) {
+          this.portfolio.splice(existingIndex, 1);
+        }
+        this.portfolio.unshift(saved);
         this.setNotice(this.t("assetSaved"), "success");
       } catch (error) {
         this.setNotice(error.message || this.t("saveFailed"), "error");
@@ -295,7 +345,7 @@ createApp({
       this.isLoading.deletingId = id;
       try {
         await this.apiFetch(`/api/portfolio/${id}`, { method: "DELETE" });
-        await this.loadPortfolio();
+        this.portfolio = this.portfolio.filter((asset) => asset.id !== id);
         this.setNotice(this.t("assetDeleted"), "success");
       } catch (error) {
         this.setNotice(error.message || this.t("deleteFailed"), "error");
@@ -303,7 +353,16 @@ createApp({
         this.isLoading.deletingId = null;
       }
     },
-    logout() {
+    async logout() {
+      let hasError = false;
+      if (this.token) {
+        try {
+          await this.apiFetch("/api/logout", { method: "POST" });
+        } catch (error) {
+          hasError = true;
+          this.setNotice(error.message || this.t("requestFailed"), "error");
+        }
+      }
       this.token = "";
       this.userEmail = "";
       localStorage.removeItem("pm_token");
@@ -313,18 +372,27 @@ createApp({
         this.chart.destroy();
         this.chart = null;
       }
-      this.setNotice(this.t("logoutSuccess"), "info");
+      if (!hasError) {
+        this.setNotice(this.t("logoutSuccess"), "info");
+      }
     },
     setNotice(message, type = "info") {
       this.notice.message = message;
       this.notice.type = type;
+    },
+    generateChartColors(count) {
+      if (!count) return [];
+      return Array.from({ length: count }, (_, index) => {
+        const hue = Math.round((360 / count) * index);
+        return `hsl(${hue} 80% 65%)`;
+      });
     },
     renderChart() {
       const ctx = document.getElementById("portfolioChart");
       if (!ctx) return;
       const labels = this.portfolio.map((item) => item.name);
       const values = this.portfolio.map((item) => item.totalCost);
-      const colors = ["#5cf0ff", "#7c5cff", "#ff9f68", "#00d68f", "#ff6b6b", "#ffd93d"];
+      const colors = this.generateChartColors(values.length);
 
       if (this.chart) {
         this.chart.data.labels = labels;
