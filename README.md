@@ -17,3 +17,5 @@ Then open [http://localhost:3000](http://localhost:3000).
 
 - Data is stored in a local SQLite database (`portfolio.db`) through SQLAlchemy ORM.
 - Sessions are stored server-side in SQLite with a 7-day TTL.
+- Holding names are normalized and treated as case-insensitive per user to avoid duplicate tickers.
+- Portfolio filters are cached in the browser for quick reloads.
