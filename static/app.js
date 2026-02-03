@@ -5,6 +5,7 @@ const defaultFilters = {
   category: "all",
   sort: "recent",
   tag: "",
+  risk: "all",
 };
 
 const loadStoredFilters = () => {
@@ -23,6 +24,9 @@ const loadStoredFilters = () => {
     }
     if (typeof next.tag !== "string") {
       next.tag = defaultFilters.tag;
+    }
+    if (!["all", "low", "medium", "high"].includes(next.risk)) {
+      next.risk = defaultFilters.risk;
     }
     return next;
   } catch (error) {
@@ -143,6 +147,9 @@ createApp({
           statAssets: "资产数",
           statTotalCost: "总投入",
           statAverageCost: "平均成本",
+          mosaicTitle: "资产热力拼图",
+          mosaicSubtitle: "按占比大小与盈亏颜色生成的迷你热区。",
+          mosaicEmpty: "暂无可视化数据，添加持仓后自动生成。",
           formTitle: "新增/加仓",
           formSubtitle: "记录你的每一笔买入。",
           assetName: "资产名称",
@@ -165,6 +172,7 @@ createApp({
           sortName: "名称",
           sortTotalCost: "总投入",
           sortQuantity: "数量",
+          filterRisk: "风险",
           clearFilters: "清除筛选",
           filterTag: "标签筛选",
           filterTagPlaceholder: "输入标签关键词",
@@ -231,9 +239,16 @@ createApp({
           targetDeltaMatch: "已接近目标",
           performanceTitle: "收益走势看板",
           performanceSubtitle: "跟踪组合净值与收益变化。",
+          performanceMetricsTitle: "进阶指标",
+          performanceMetricsSubtitle: "基于历史快照估算波动与回撤。",
           performanceNoteNeutral: "完善当前价格以获得更准确的浮动收益。",
           performanceNotePositive: "当前组合保持正收益趋势。",
           performanceNoteNegative: "注意风险敞口，及时调整策略。",
+          performanceVolatility: "波动率",
+          performanceDrawdown: "最大回撤",
+          performanceSharpe: "夏普比率",
+          performanceWinRate: "上涨占比",
+          metricUnavailable: "暂无",
           budgetTitle: "投入预算进度",
           budgetSubtitle: "设定目标预算，自动追踪完成度。",
           budgetTarget: "目标预算 ({currency})",
@@ -267,6 +282,8 @@ createApp({
           presetPlaceholder: "保存当前筛选为视图名称",
           presetSave: "保存视图",
           presetEmpty: "还没有保存视图",
+          quickFiltersTitle: "快捷筛选",
+          quickFilterReset: "重置筛选",
           tagInsightTitle: "标签热点",
           tagInsightSubtitle: "查看常用标签与投入占比。",
           tagInsightEmpty: "添加标签后，这里会显示热门标签",
@@ -309,6 +326,9 @@ createApp({
           statAssets: "Assets",
           statTotalCost: "Total invested",
           statAverageCost: "Average cost",
+          mosaicTitle: "Allocation mosaic",
+          mosaicSubtitle: "Tiles sized by weight and tinted by performance.",
+          mosaicEmpty: "No data yet. Add holdings to generate the mosaic.",
           formTitle: "Add / buy more",
           formSubtitle: "Log every buy in one place.",
           assetName: "Asset name",
@@ -331,6 +351,7 @@ createApp({
           sortName: "Name",
           sortTotalCost: "Total invested",
           sortQuantity: "Quantity",
+          filterRisk: "Risk",
           clearFilters: "Clear filters",
           filterTag: "Tag filter",
           filterTagPlaceholder: "Search tags",
@@ -397,9 +418,16 @@ createApp({
           targetDeltaMatch: "On target",
           performanceTitle: "Performance cockpit",
           performanceSubtitle: "Track portfolio value and returns.",
+          performanceMetricsTitle: "Advanced metrics",
+          performanceMetricsSubtitle: "Estimated from recent value snapshots.",
           performanceNoteNeutral: "Add current prices for more accurate returns.",
           performanceNotePositive: "Portfolio is trending positive.",
           performanceNoteNegative: "Review exposure and rebalance if needed.",
+          performanceVolatility: "Volatility",
+          performanceDrawdown: "Max drawdown",
+          performanceSharpe: "Sharpe ratio",
+          performanceWinRate: "Up days",
+          metricUnavailable: "N/A",
           budgetTitle: "Budget progress",
           budgetSubtitle: "Set an investing target and track progress.",
           budgetTarget: "Budget target ({currency})",
@@ -433,6 +461,8 @@ createApp({
           presetPlaceholder: "Save current filters as a view",
           presetSave: "Save view",
           presetEmpty: "No saved views yet",
+          quickFiltersTitle: "Quick filters",
+          quickFilterReset: "Reset filters",
           tagInsightTitle: "Tag spotlight",
           tagInsightSubtitle: "See the most-used tags in your portfolio.",
           tagInsightEmpty: "Add tags to surface your top themes.",
@@ -537,6 +567,29 @@ createApp({
         totalCost: this.currency(total || 0),
         averageCost: this.currency(totalQty ? total / totalQty : 0),
       };
+    },
+    allocationMosaic() {
+      const total = this.visiblePortfolio.reduce((sum, item) => sum + this.convertedCost(item), 0);
+      if (!total) return [];
+      return this.visiblePortfolio
+        .map((asset) => {
+          const cost = this.convertedCost(asset);
+          const marketValue = this.convertedMarketValue(asset);
+          const returnRate = cost ? (marketValue - cost) / cost : 0;
+          const span = Math.max(2, Math.min(8, Math.round((cost / total) * 12)));
+          return {
+            id: asset.id,
+            name: asset.name,
+            percent: Math.round((cost / total) * 100),
+            span,
+            returnLabel: `${(returnRate * 100).toFixed(1)}%`,
+            performanceClass: returnRate > 0.01 ? "positive" : returnRate < -0.01 ? "negative" : "neutral",
+            valueLabel: this.currency(cost),
+            marketLabel: this.currency(marketValue),
+          };
+        })
+        .sort((a, b) => b.percent - a.percent)
+        .slice(0, 10);
     },
     allocationBreakdown() {
       const totals = this.visiblePortfolio.reduce(
@@ -674,6 +727,41 @@ createApp({
         note,
       };
     },
+    performanceMetrics() {
+      const values = this.valueHistory.map((entry) => entry.value).filter((value) => Number.isFinite(value));
+      if (values.length < 2) {
+        return [
+          { label: this.t("performanceVolatility"), value: this.t("metricUnavailable") },
+          { label: this.t("performanceDrawdown"), value: this.t("metricUnavailable") },
+          { label: this.t("performanceSharpe"), value: this.t("metricUnavailable") },
+          { label: this.t("performanceWinRate"), value: this.t("metricUnavailable") },
+        ];
+      }
+      const returns = [];
+      for (let i = 1; i < values.length; i += 1) {
+        if (values[i - 1] === 0) continue;
+        returns.push((values[i] - values[i - 1]) / values[i - 1]);
+      }
+      const avgReturn = returns.reduce((sum, value) => sum + value, 0) / (returns.length || 1);
+      const variance =
+        returns.reduce((sum, value) => sum + (value - avgReturn) ** 2, 0) / (returns.length || 1);
+      const volatility = Math.sqrt(variance);
+      let peak = values[0];
+      let maxDrawdown = 0;
+      values.forEach((value) => {
+        if (value > peak) peak = value;
+        const drawdown = peak ? (peak - value) / peak : 0;
+        maxDrawdown = Math.max(maxDrawdown, drawdown);
+      });
+      const winRate = returns.filter((value) => value > 0).length / (returns.length || 1);
+      const sharpe = volatility ? (avgReturn / volatility) * Math.sqrt(12) : 0;
+      return [
+        { label: this.t("performanceVolatility"), value: `${(volatility * 100).toFixed(1)}%` },
+        { label: this.t("performanceDrawdown"), value: `${(maxDrawdown * 100).toFixed(1)}%` },
+        { label: this.t("performanceSharpe"), value: sharpe ? sharpe.toFixed(2) : "0.00" },
+        { label: this.t("performanceWinRate"), value: `${(winRate * 100).toFixed(0)}%` },
+      ];
+    },
     budgetProgress() {
       if (!this.monthlyBudget) return 0;
       const totalCost = this.portfolio.reduce((sum, asset) => sum + this.convertedCost(asset), 0);
@@ -759,6 +847,20 @@ createApp({
     canSavePreset() {
       return this.newPresetName.trim().length > 0;
     },
+    quickFilters() {
+      return [
+        { key: "all", label: this.t("filterAll"), type: "category", value: "all" },
+        ...this.categories.map((category) => ({
+          key: category.value,
+          label: this.t(category.labelKey),
+          type: "category",
+          value: category.value,
+        })),
+        { key: "risk-low", label: this.t("riskLow"), type: "risk", value: "low" },
+        { key: "risk-medium", label: this.t("riskMedium"), type: "risk", value: "medium" },
+        { key: "risk-high", label: this.t("riskHigh"), type: "risk", value: "high" },
+      ];
+    },
     visiblePortfolio() {
       let list = [...this.portfolio];
       const query = this.filters.query.trim().toLowerCase();
@@ -769,6 +871,9 @@ createApp({
         list = list.filter(
           (asset) => this.normalizedCategory(asset.category) === this.filters.category
         );
+      }
+      if (this.filters.risk !== "all") {
+        list = list.filter((asset) => (asset.riskLevel || "medium") === this.filters.risk);
       }
       const tagQuery = this.filters.tag.trim().toLowerCase();
       if (tagQuery) {
@@ -790,7 +895,8 @@ createApp({
         this.filters.query.trim().length > 0 ||
         this.filters.category !== "all" ||
         this.filters.sort !== "recent" ||
-        this.filters.tag.trim().length > 0
+        this.filters.tag.trim().length > 0 ||
+        this.filters.risk !== "all"
       );
     },
   },
@@ -868,6 +974,18 @@ createApp({
       const unitPrice = asset.currentPrice ?? asset.totalCost / asset.quantity;
       const value = unitPrice * asset.quantity;
       return this.convertAmount(value, asset.currency || "USD", this.displayCurrency);
+    },
+    assetReturnRate(asset) {
+      const cost = this.convertedCost(asset);
+      const value = this.convertedMarketValue(asset);
+      if (!cost) return 0;
+      return (value - cost) / cost;
+    },
+    assetPerformanceClass(asset) {
+      const rate = this.assetReturnRate(asset);
+      if (rate > 0.01) return "positive";
+      if (rate < -0.01) return "negative";
+      return "neutral";
     },
     parseTags(value) {
       if (!value) return [];
@@ -1331,7 +1449,23 @@ createApp({
         category: "all",
         sort: "recent",
         tag: "",
+        risk: "all",
       };
+    },
+    applyQuickFilter(filter) {
+      if (filter.type === "category") {
+        this.filters.category = filter.value;
+      }
+      if (filter.type === "risk") {
+        this.filters.risk = filter.value;
+      }
+    },
+    clearQuickFilters() {
+      this.filters.category = "all";
+      this.filters.risk = "all";
+    },
+    applyTagFilter(tag) {
+      this.filters.tag = tag;
     },
     async init() {
       if (!this.token) return;
@@ -1356,7 +1490,7 @@ createApp({
       this.newPresetName = "";
     },
     applyPreset(preset) {
-      this.filters = { ...preset.filters };
+      this.filters = { ...defaultFilters, ...preset.filters };
     },
     removePreset(presetId) {
       this.presets = this.presets.filter((preset) => preset.id !== presetId);
@@ -1371,6 +1505,7 @@ createApp({
         this.portfolio,
         this.filters.query,
         this.filters.category,
+        this.filters.risk,
         this.filters.sort,
         this.displayCurrency,
         this.currencyRates,
