@@ -47,12 +47,19 @@ createApp({
           categoryStock: "股票",
           categoryCrypto: "虚拟币",
           loginFailed: "登录失败",
+          loginSuccess: "登录成功",
           registerSuccess: "注册成功，请登录",
           registerFailed: "注册失败",
           invalidAsset: "请输入有效的资产信息",
+          assetSaved: "持仓已保存",
           saveFailed: "保存失败",
+          assetDeleted: "持仓已删除",
           deleteFailed: "删除失败",
           requestFailed: "请求失败",
+          logoutSuccess: "已退出登录",
+          loading: "加载中...",
+          saving: "保存中...",
+          deleting: "删除中...",
         },
         "en-US": {
           brandTitle: "Portfolio Manager",
@@ -96,12 +103,19 @@ createApp({
           categoryStock: "Stocks",
           categoryCrypto: "Crypto",
           loginFailed: "Login failed",
+          loginSuccess: "Signed in successfully",
           registerSuccess: "Registration successful. Please sign in.",
           registerFailed: "Registration failed",
           invalidAsset: "Please enter valid asset information",
+          assetSaved: "Holding saved",
           saveFailed: "Save failed",
+          assetDeleted: "Holding deleted",
           deleteFailed: "Delete failed",
           requestFailed: "Request failed",
+          logoutSuccess: "Signed out",
+          loading: "Loading...",
+          saving: "Saving...",
+          deleting: "Deleting...",
         },
       },
       loginForm: {
@@ -126,6 +140,16 @@ createApp({
       token: localStorage.getItem("pm_token") || "",
       userEmail: localStorage.getItem("pm_email") || "",
       chart: null,
+      notice: {
+        message: "",
+        type: "info",
+      },
+      isLoading: {
+        login: false,
+        register: false,
+        save: false,
+        deletingId: null,
+      },
     };
   },
   computed: {
@@ -189,6 +213,8 @@ createApp({
       return response.json();
     },
     async login() {
+      if (this.isLoading.login) return;
+      this.isLoading.login = true;
       try {
         const result = await this.apiFetch("/api/login", {
           method: "POST",
@@ -204,11 +230,16 @@ createApp({
         this.loginForm.email = "";
         this.loginForm.password = "";
         await this.loadPortfolio();
+        this.setNotice(this.t("loginSuccess"), "success");
       } catch (error) {
-        alert(error.message || this.t("loginFailed"));
+        this.setNotice(error.message || this.t("loginFailed"), "error");
+      } finally {
+        this.isLoading.login = false;
       }
     },
     async register() {
+      if (this.isLoading.register) return;
+      this.isLoading.register = true;
       try {
         await this.apiFetch("/api/register", {
           method: "POST",
@@ -219,9 +250,11 @@ createApp({
         });
         this.registerForm.email = "";
         this.registerForm.password = "";
-        alert(this.t("registerSuccess"));
+        this.setNotice(this.t("registerSuccess"), "success");
       } catch (error) {
-        alert(error.message || this.t("registerFailed"));
+        this.setNotice(error.message || this.t("registerFailed"), "error");
+      } finally {
+        this.isLoading.register = false;
       }
     },
     async loadPortfolio() {
@@ -230,9 +263,11 @@ createApp({
     },
     async saveAsset() {
       if (!this.assetForm.name || this.assetForm.quantity <= 0 || this.assetForm.cost < 0) {
-        alert(this.t("invalidAsset"));
+        this.setNotice(this.t("invalidAsset"), "error");
         return;
       }
+      if (this.isLoading.save) return;
+      this.isLoading.save = true;
       try {
         await this.apiFetch("/api/portfolio", {
           method: "POST",
@@ -248,16 +283,24 @@ createApp({
         this.assetForm.quantity = 1;
         this.assetForm.cost = 0;
         await this.loadPortfolio();
+        this.setNotice(this.t("assetSaved"), "success");
       } catch (error) {
-        alert(error.message || this.t("saveFailed"));
+        this.setNotice(error.message || this.t("saveFailed"), "error");
+      } finally {
+        this.isLoading.save = false;
       }
     },
     async deleteAsset(id) {
+      if (this.isLoading.deletingId) return;
+      this.isLoading.deletingId = id;
       try {
         await this.apiFetch(`/api/portfolio/${id}`, { method: "DELETE" });
         await this.loadPortfolio();
+        this.setNotice(this.t("assetDeleted"), "success");
       } catch (error) {
-        alert(error.message || this.t("deleteFailed"));
+        this.setNotice(error.message || this.t("deleteFailed"), "error");
+      } finally {
+        this.isLoading.deletingId = null;
       }
     },
     logout() {
@@ -270,6 +313,11 @@ createApp({
         this.chart.destroy();
         this.chart = null;
       }
+      this.setNotice(this.t("logoutSuccess"), "info");
+    },
+    setNotice(message, type = "info") {
+      this.notice.message = message;
+      this.notice.type = type;
     },
     renderChart() {
       const ctx = document.getElementById("portfolioChart");

@@ -52,6 +52,15 @@
           </button>
         </div>
       </header>
+      <div
+        class="notice"
+        v-if="notice.message"
+        :class="notice.type"
+        role="status"
+        aria-live="polite"
+      >
+        {{ notice.message }}
+      </div>
 
       <main>
         <section class="auth" v-if="!isAuthed">
@@ -79,7 +88,9 @@
                   required
                 />
               </label>
-              <button type="submit" class="primary-btn">{{ t("login") }}</button>
+              <button type="submit" class="primary-btn" :disabled="isLoading.login">
+                {{ isLoading.login ? t("loading") : t("login") }}
+              </button>
             </form>
             <div class="divider">{{ t("or") }}</div>
             <form @submit.prevent="register">
@@ -104,7 +115,9 @@
                   required
                 />
               </label>
-              <button type="submit" class="secondary-btn">{{ t("createAccount") }}</button>
+              <button type="submit" class="secondary-btn" :disabled="isLoading.register">
+                {{ isLoading.register ? t("loading") : t("createAccount") }}
+              </button>
             </form>
             <p class="hint">{{ t("dataHint") }}</p>
           </div>
@@ -178,7 +191,9 @@
                   {{ t("totalCost") }}
                   <input v-model.number="assetForm.cost" type="number" min="0" step="0.01" required />
                 </label>
-                <button type="submit" class="primary-btn">{{ t("saveAsset") }}</button>
+                <button type="submit" class="primary-btn" :disabled="isLoading.save">
+                  {{ isLoading.save ? t("saving") : t("saveAsset") }}
+                </button>
               </form>
             </div>
           </div>
@@ -216,7 +231,13 @@
                   <div>{{ categoryLabel(asset.category) }}</div>
                 </div>
                 <div>
-                  <button class="delete-btn" @click="deleteAsset(asset.id)">{{ t("delete") }}</button>
+                  <button
+                    class="delete-btn"
+                    @click="deleteAsset(asset.id)"
+                    :disabled="isLoading.deletingId === asset.id"
+                  >
+                    {{ isLoading.deletingId === asset.id ? t("deleting") : t("delete") }}
+                  </button>
                 </div>
               </div>
             </div>
