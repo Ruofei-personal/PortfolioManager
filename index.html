@@ -134,6 +134,7 @@
         </section>
 
         <section class="dashboard" v-else>
+          <template v-if="viewSheet === 'dashboard'">
           <div class="dashboard-grid">
             <div class="panel">
               <div class="panel-header">
@@ -159,6 +160,9 @@
               <div class="action-buttons">
                 <button class="primary-btn" type="button" @click="openAssetModal">
                   {{ t("addHolding") }}
+                </button>
+                <button class="secondary-btn" type="button" @click="openHoldingsSheet">
+                  {{ t("openHoldingsSheet") }}
                 </button>
                 <button class="secondary-btn" type="button" @click="refreshPortfolio">
                   {{ t("refreshHoldings") }}
@@ -215,61 +219,67 @@
               <div class="empty-state" v-else>{{ t("allocationEmpty") }}</div>
             </div>
           </div>
+          </template>
 
-          <div class="panel table-panel" aria-live="polite">
-            <div class="panel-header panel-header-row">
-              <div>
-                <h2>{{ t("tableTitle") }}</h2>
-                <p>{{ t("tableSubtitle") }}</p>
+          <div class="holdings-sheet" v-else-if="viewSheet === 'holdings'">
+            <div class="panel table-panel sheet-panel" aria-live="polite">
+              <div class="panel-header panel-header-row">
+                <div>
+                  <button class="ghost-btn back-btn" type="button" @click="backToDashboard">
+                    ← {{ t("backToDashboard") }}
+                  </button>
+                  <h2>{{ t("tableTitle") }}</h2>
+                  <p>{{ t("tableSubtitle") }}</p>
+                </div>
+                <div class="panel-header-actions">
+                  <button class="primary-btn" type="button" @click="openAssetModal">
+                    {{ t("addHolding") }}
+                  </button>
+                </div>
               </div>
-              <div class="panel-header-actions">
-                <button class="primary-btn" type="button" @click="openAssetModal">
-                  {{ t("addHolding") }}
-                </button>
+              <table class="table" v-if="visiblePortfolio.length" :aria-label="t('tableAriaHoldings')">
+                <thead>
+                  <tr>
+                    <th scope="col">{{ t("assetName") }}</th>
+                    <th scope="col">{{ t("quantity") }}</th>
+                    <th scope="col">{{ t("statTotalCost") }}</th>
+                    <th scope="col">{{ t("actions") }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="asset-row" v-for="asset in visiblePortfolio" :key="asset.id">
+                    <td>
+                      <div class="asset-name">{{ asset.name }}</div>
+                      <div class="asset-note muted">{{ categoryLabel(asset.category) }}</div>
+                    </td>
+                    <td>
+                      <span class="cell-label">{{ t("quantity") }}</span>
+                      <span class="cell-value">{{ asset.quantity }}</span>
+                    </td>
+                    <td>
+                      <span class="cell-label">{{ t("statTotalCost") }}</span>
+                      <span class="cell-value">{{ currency(asset.totalCost) }}</span>
+                    </td>
+                    <td>
+                      <div class="table-actions-cell">
+                        <button class="ghost-btn" type="button" @click="startEdit(asset)">
+                          {{ t("edit") }}
+                        </button>
+                        <button
+                          class="delete-btn"
+                          @click="deleteAsset(asset.id)"
+                          :disabled="isLoading.deletingId === asset.id"
+                        >
+                          {{ isLoading.deletingId === asset.id ? t("deleting") : t("delete") }}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="empty-state" v-else role="status">
+                {{ t("emptyState") }}
               </div>
-            </div>
-            <table class="table" v-if="visiblePortfolio.length" :aria-label="t('tableAriaHoldings')">
-              <thead>
-                <tr>
-                  <th scope="col">{{ t("assetName") }}</th>
-                  <th scope="col">{{ t("quantity") }}</th>
-                  <th scope="col">{{ t("statTotalCost") }}</th>
-                  <th scope="col">{{ t("actions") }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr class="asset-row" v-for="asset in visiblePortfolio" :key="asset.id">
-                  <td>
-                    <div class="asset-name">{{ asset.name }}</div>
-                    <div class="asset-note muted">{{ categoryLabel(asset.category) }}</div>
-                  </td>
-                  <td>
-                    <span class="cell-label">{{ t("quantity") }}</span>
-                    <span class="cell-value">{{ asset.quantity }}</span>
-                  </td>
-                  <td>
-                    <span class="cell-label">{{ t("statTotalCost") }}</span>
-                    <span class="cell-value">{{ currency(asset.totalCost) }}</span>
-                  </td>
-                  <td>
-                    <div class="table-actions-cell">
-                      <button class="ghost-btn" type="button" @click="startEdit(asset)">
-                        {{ t("edit") }}
-                      </button>
-                      <button
-                        class="delete-btn"
-                        @click="deleteAsset(asset.id)"
-                        :disabled="isLoading.deletingId === asset.id"
-                      >
-                        {{ isLoading.deletingId === asset.id ? t("deleting") : t("delete") }}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="empty-state" v-else role="status">
-              {{ t("emptyState") }}
             </div>
           </div>
 

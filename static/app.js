@@ -39,6 +39,8 @@ createApp({
           actionsSubtitle: "从你的持仓开始管理。",
           actionsHint: "添加持仓后，会在下方列表展示并自动统计。",
           addHolding: "添加持仓",
+          openHoldingsSheet: "持仓明细",
+          backToDashboard: "返回概览",
           refreshHoldings: "刷新持仓",
           mosaicTitle: "资产热力拼图",
           mosaicSubtitle: "按占比大小与盈亏颜色生成的迷你热区。",
@@ -233,6 +235,8 @@ createApp({
           actionsSubtitle: "Keep your holdings up to date.",
           actionsHint: "Add a holding to see it in the list and summary.",
           addHolding: "Add holding",
+          openHoldingsSheet: "Holdings",
+          backToDashboard: "Back to overview",
           refreshHoldings: "Refresh holdings",
           mosaicTitle: "Allocation mosaic",
           mosaicSubtitle: "Tiles sized by weight and tinted by performance.",
@@ -434,6 +438,7 @@ createApp({
         "#ffd65c",
       ],
       activeSliceId: null,
+      viewSheet: "dashboard",
       portfolio: [],
       token: localStorage.getItem("pm_token") || "",
       userEmail: localStorage.getItem("pm_email") || "",
@@ -487,30 +492,24 @@ createApp({
       const total = this.visiblePortfolio.reduce((sum, item) => sum + (item.totalCost || 0), 0);
       if (!total) return [];
       let cursor = 0;
-      const filtered = this.visiblePortfolio
-        .filter((item) => item.totalCost > 0)
+      const filtered = this.visiblePortfolio.filter((item) => item.totalCost > 0);
       return filtered.map((item, index) => {
-          const value = item.totalCost || 0;
-          const percent = value / total;
-          const start = cursor;
-          const angle = percent * 360;
-          const startAngle = cursor * 360;
-          const endAngle = index === filtered.length - 1 ? 360 : startAngle + angle;
-          const end = cursor + percent * 100;
-          cursor = end;
-          return {
-            id: item.id,
-            name: item.name,
-            value,
-            percent,
-            start,
-            end,
-            startAngle,
-            endAngle,
-            path: this.describeSlicePath(100, 100, 90, startAngle, endAngle),
-            color: this.pieColors[index % this.pieColors.length],
-          };
-        });
+        const value = item.totalCost || 0;
+        const percent = value / total;
+        const startAngle = cursor * 360;
+        const endAngle = (cursor + percent) * 360;
+        cursor += percent;
+        return {
+          id: item.id,
+          name: item.name,
+          value,
+          percent,
+          startAngle,
+          endAngle,
+          path: this.describeSlicePath(100, 100, 90, startAngle, endAngle),
+          color: this.pieColors[index % this.pieColors.length],
+        };
+      });
     },
   },
   methods: {
@@ -804,6 +803,12 @@ createApp({
     cancelEdit() {
       this.resetAssetForm();
       this.closeAssetModal();
+    },
+    openHoldingsSheet() {
+      this.viewSheet = "holdings";
+    },
+    backToDashboard() {
+      this.viewSheet = "dashboard";
     },
     openAssetModal() {
       if (!this.isEditing) {
